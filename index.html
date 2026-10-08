@@ -5,7 +5,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -56,7 +56,7 @@ tbody tr:hover{background:#f5f3ff}
 .vf{position:relative;width:100%;max-width:340px;aspect-ratio:1;border-radius:24px;background:#0f172a;overflow:hidden;box-shadow:0 18px 40px rgba(15,23,42,.35)}
 .vf #reader{position:absolute;inset:0;width:100%;height:100%;border:0!important}.vf #reader video{object-fit:cover}
 #ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#94a3b8;font-size:.85rem;background:radial-gradient(circle at 50% 40%,#1e293b,#0f172a)}
-#reader:not(.hidden)+#ph{display:none}
+#cv:not(.hidden)+#ph{display:none}.vf video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vf i{position:absolute;width:40px;height:40px;border:4px solid #a5b4fc;z-index:5;pointer-events:none}
 .c1{top:16px;left:16px;border-right:0;border-bottom:0;border-top-left-radius:14px}.c2{top:16px;right:16px;border-left:0;border-bottom:0;border-top-right-radius:14px}
 .c3{bottom:16px;left:16px;border-right:0;border-top:0;border-bottom-left-radius:14px}.c4{bottom:16px;right:16px;border-left:0;border-top:0;border-bottom-right-radius:14px}
@@ -141,21 +141,34 @@ function boot(){$('auth').classList.add('hidden');$('app').classList.remove('hid
  $('nav').innerHTML=items.filter(i=>i[2].includes(user.role)).map(i=>`<a href="#" data-v="${i[0]}" class="nav whitespace-nowrap block px-3 py-2 rounded-lg text-sm hover:bg-blue-50" onclick="nav('${i[0]}');return false">${i[1]}</a>`).join('');
  kiosk=kiosk||user.role==='guru';$('app').classList.toggle('kiosk',kiosk);go(kiosk?'scan':'dashboard')}
 function logout(){user=null;S.set('sess',null);$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
-let qr=null,camOn=false,camBusy=false;
-function camBtn(on){const b=$('bc');if(!b)return;b.textContent=on?'⏹ Matikan Kamera':'📷 Aktifkan Kamera Scanner';b.className='px-5 py-2.5 rounded-lg text-sm font-semibold border '+(on?'bg-red-50 text-red-600 border-red-200':'bg-blue-50 text-blue-600 border-blue-200')}
-async function toggleCam(){camOn?await stopCam():await startCam()}
-async function startCam(){const rd=$('reader'),er=$('cerr');if(camBusy)return;
- if(!window.Html5Qrcode){er.textContent='Library scanner belum termuat.';er.classList.remove('hidden');return}
- camBusy=true;er.classList.add('hidden');rd.classList.remove('hidden');$('bc').textContent='Meminta akses kamera...';
- try{qr=qr||new Html5Qrcode('reader');
-  await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},txt=>{
-   try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=800;o.start();o.stop(c.currentTime+.1)}catch(e){}
-   const i=$('si');if(i&&!i.disabled){i.value=txt;window.runScan&&window.runScan(txt)}},()=>{});
-  camOn=true;camBtn(true)
- }catch(e){rd.classList.add('hidden');camOn=false;camBtn(false);
-  er.textContent='Kamera tidak bisa diakses ('+(e&&e.message||e)+'). Izinkan akses kamera di browser; di preview ini kamera bisa diblokir, jalankan di hosting HTTPS sendiri.';er.classList.remove('hidden')}
+let stream=null,loopT=null,det=null,camOn=false,camBusy=false,lastTxt='',lastT=0,cvs=null;
+function camBtn(on){const b=$('bc');if(!b)return;b.textContent=on?'⏹ Matikan Kamera':'📷 Aktifkan Kamera Scanner';b.className='px-5 py-2.5 rounded-xl text-sm font-semibold border '+(on?'bg-red-50 text-red-600 border-red-200':'bg-blue-50 text-blue-600 border-blue-200')}
+async function toggleCam(){camOn?stopCam():await startCam()}
+function camErr(m){const er=$('cerr');if(er){er.textContent=m;er.classList.remove('hidden')}}
+function extractNis(t){t=String(t).trim();if(siswa.some(s=>s.nis===t))return t;const hit=t.split(/[^A-Za-z0-9]+/).filter(Boolean).find(k=>siswa.some(s=>s.nis===k));return hit||t}
+function onCode(txt){const now=Date.now();if(txt===lastTxt&&now-lastT<5000)return;
+ const i=$('si');if(!i||i.disabled)return;lastTxt=txt;lastT=now;
+ try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=900;o.start();o.stop(c.currentTime+.12)}catch(e){}
+ const nis=extractNis(txt);i.value=nis;window.runScan&&window.runScan(nis)}
+function scanLoop(){const v=$('cv');
+ const tick=async()=>{if(!camOn||!v)return;
+  if(v.readyState>=2&&v.videoWidth){let txt='';
+   try{if(det){const r=await det.detect(v);if(r.length)txt=r[0].rawValue}
+    if(!txt&&window.jsQR){const w=Math.min(640,v.videoWidth),h=Math.round(v.videoHeight*w/v.videoWidth);cvs=cvs||document.createElement('canvas');cvs.width=w;cvs.height=h;
+     const x=cvs.getContext('2d',{willReadFrequently:true});x.drawImage(v,0,0,w,h);const q=jsQR(x.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'attemptBoth'});if(q)txt=q.data}}catch(e){}
+   if(txt)onCode(txt)}
+  loopT=setTimeout(tick,120)};tick()}
+async function startCam(){if(camBusy||camOn)return;const v=$('cv');$('cerr').classList.add('hidden');
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return camErr('Kamera tidak didukung. Buka aplikasi lewat alamat HTTPS dengan browser terbaru.');
+ camBusy=true;$('bc').textContent='Meminta akses kamera...';
+ try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  v.srcObject=stream;v.classList.remove('hidden');await v.play();
+  det=null;if('BarcodeDetector' in window){try{det=new BarcodeDetector()}catch(e){det=null}}
+  camOn=true;camBtn(true);lastTxt='';scanLoop()
+ }catch(e){stopCam();camBtn(false);const n=e&&e.name;
+  camErr(n==='NotAllowedError'?'Izin kamera ditolak. Izinkan akses kamera di browser (ikon gembok di address bar). Di preview ini kamera bisa diblokir; coba di hosting HTTPS sendiri.':n==='NotFoundError'?'Kamera tidak ditemukan di perangkat ini.':'Kamera tidak bisa dibuka: '+(e&&e.message||e))}
  camBusy=false}
-async function stopCam(){try{if(qr&&camOn)await qr.stop()}catch(e){}camOn=false;const rd=$('reader');if(rd)rd.classList.add('hidden');camBtn(false)}
+function stopCam(){camOn=false;clearTimeout(loopT);if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}const v=$('cv');if(v){v.srcObject=null;v.classList.add('hidden')}camBtn(false)}
 function nav(v){v==='scan'?openScan():go(v)}
 function openScan(){let w=null;try{w=window.open(location.href.split('#')[0]+'#scan','_blank')}catch(e){}
  if(!w){toast('Tab baru diblokir, mode scan dibuka di tab ini.','info');setKiosk(true)}}
@@ -187,7 +200,7 @@ function scan(){
  <div class="hero rounded-3xl p-6 mb-5 text-white flex flex-wrap items-center justify-between gap-4"><div><div class="text-xs uppercase tracking-widest opacity-80">Absensi Kehadiran</div><h2 class="text-3xl font-extrabold" style="color:#fff">Scan Absensi</h2><p class="text-sm opacity-80 mt-1">Arahkan QR / barcode siswa ke kamera atau ketik NIS</p></div>
  <div class="text-right"><div id="clk" class="text-4xl font-extrabold tabular-nums">--:--:--</div><div id="dt" class="text-sm opacity-80"></div></div></div>
  <div class="grid lg:grid-cols-12 gap-5"><div class="lg:col-span-7"><div class="bg-white rounded-2xl p-5">
-  <div class="vf mx-auto"><div id="reader" class="hidden"></div><div id="ph"><div class="text-5xl">📷</div>Kamera belum aktif</div><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><span class="sl"></span></div>
+  <div class="vf mx-auto"><video id="cv" class="hidden" playsinline muted></video><div id="ph"><div class="text-5xl">📷</div>Kamera belum aktif</div><i class="c1"></i><i class="c2"></i><i class="c3"></i><i class="c4"></i><span class="sl"></span></div>
   <div class="flex flex-col items-center mt-4"><button id="bc" onclick="toggleCam()" class="px-5 py-2.5 rounded-xl text-sm font-semibold border bg-blue-50 text-blue-600 border-blue-200">📷 Aktifkan Kamera Scanner</button><p id="cerr" class="text-xs text-red-600 mt-2 hidden"></p></div>
   <div class="flex items-center gap-3 my-4 text-xs text-gray-400 uppercase tracking-wider"><hr class="flex-1"><span>atau ketik NIS</span><hr class="flex-1"></div>
   <div class="flex gap-2"><input id="si" autocomplete="off" class="inp big py-3 border-2" placeholder="SCAN / KETIK NIS"><button class="btn px-6" onclick="runScan($('si').value)">Absen</button></div>
