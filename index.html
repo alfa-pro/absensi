@@ -6,6 +6,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -84,7 +85,7 @@ tbody tr:hover{background:#f5f3ff}
    <input id="pw" type="password" required class="inp" placeholder="Password">
    <button class="btn w-full py-3 text-base">Masuk ke Sistem →</button>
   </form>
-  <div class="mt-5 p-3 bg-blue-50 rounded-lg text-xs text-blue-800"><b>Info Testing:</b><br>Admin: admin@tp.com / admin<br>Guru: guru@tp.com / guru</div>
+  <div id="demo" class="mt-5 p-3 bg-blue-50 rounded-lg text-xs text-blue-800"><b>Info Testing:</b><br>Admin: admin@tp.com / admin<br>Guru: guru@tp.com / guru</div>
  </div>
 </div>
 
@@ -113,7 +114,12 @@ const mem={};
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):(mem[k]??d)}catch(e){return mem[k]??d}},
  set(k,v){mem[k]=v;try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const $=id=>document.getElementById(id);
-const users=[{email:'admin@tp.com',password:'admin',name:'Yunus Admin',role:'admin'},{email:'guru@tp.com',password:'guru',name:'Siska Guru',role:'guru'}];
+const users=[{email:'admin@tp.com',password:'adminbukit',name:'Siska Admin',role:'admin'},{email:'guru@tp.com',password:'guru',name:'Siti Guru',role:'guru'}];
+/* ===== KONFIGURASI SUPABASE =====
+   Isi 2 nilai ini dari Supabase: Project Settings > API (Project URL & anon public key).
+   Jika dikosongkan, aplikasi berjalan dalam MODE LOKAL (data hanya di browser ini). */
+const SB_URL='https://bnqpdrjjyukodvmoevyc.supabase.co',SB_KEY='sb_publishable_FBWssgJNcPNUOmoWAB7jaQ_0u3ZiDNm';
+let sb=null;try{if(SB_URL&&SB_KEY&&window.supabase)sb=window.supabase.createClient(SB_URL,SB_KEY)}catch(e){}
 let kelas=S.get('kelas',[{id:'k1',nama:'X MIPA 1'},{id:'k2',nama:'X IPS 1'}]);
 let siswa=S.get('siswa',[
  {id:'s1',nis:'1001',nama:'Ahmad Fauzi',kelasId:'k1',noWa:'081234567890',ortu:'Bpk. Herman'},
@@ -121,6 +127,7 @@ let siswa=S.get('siswa',[
  {id:'s3',nis:'1003',nama:'Candra Wijaya',kelasId:'k2',noWa:'085555555555',ortu:'Bpk. Wijaya'}]);
 let riwayat=S.get('riwayat',[]);
 function newKelasId(){const ids=new Set(kelas.map(k=>k.id));let n=1;while(ids.has(String(n).padStart(4,'0')))n++;return String(n).padStart(4,'0')}
+if(sb){kelas=[];siswa=[];riwayat=[]}
 (function(){const map={};kelas.forEach(k=>{if(!/^\d{4}$/.test(k.id)){const o=k.id;k.id=newKelasId();map[o]=k.id}});
  if(Object.keys(map).length){siswa.forEach(x=>{if(map[x.kelasId])x.kelasId=map[x.kelasId]});riwayat.forEach(r=>{if(map[r.kelasId])r.kelasId=map[r.kelasId]});S.set('kelas',kelas);S.set('siswa',siswa);S.set('riwayat',riwayat)}})();
 let cfg=Object.assign({url:'https://tp4.wapromosi.my.id',apikey:'',sender:'',sekolah:'SMA Negeri 1 Nusantara',tpl:'Yth. Bapak/Ibu [ORTU], ananda [NAMA] (NIS: [NIS], Kelas: [KELAS]) telah HADIR di [SEKOLAH] pada [TANGGAL] pukul [WAKTU]. Terima kasih.'},S.get('cfg',{}));
@@ -128,19 +135,37 @@ const MIG={'[Nama Ortu]':'[ORTU]','[Nama Siswa]':'[NAMA]','[Nama Sekolah]':'[SEK
 const BRAND0={name:'AbsenSmart',tagline:'Sistem Kehadiran Cerdas',logo:'📷',logoImg:''};
 let brand=Object.assign({},BRAND0,S.get('brand',{}));
 let kiosk=false;try{kiosk=location.hash==='#scan'}catch(e){}
+const p2=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const idDate=t=>{const [y,m,d]=t.split('-').map(Number);return d+'/'+m+'/'+y};
+async function fetchAll(q){let o=[],f=0;for(;;){const {data,error}=await q().range(f,f+999);if(error)throw error;o=o.concat(data);if(data.length<1000)break;f+=1000}return o}
+const sisDb=x=>({id:x.id,nis:x.nis,nama:x.nama,kelas_id:x.kelasId,no_wa:x.noWa||'',ortu:x.ortu||''});
+async function dbDo(p){const {error}=await p;if(error){toast('Database: '+error.message,'error');return false}return true}
+async function refreshMaster(){if(!sb)return;
+ kelas=(await fetchAll(()=>sb.from('kelas').select('*').order('id'))).map(k=>({id:k.id,nama:k.nama}));
+ siswa=(await fetchAll(()=>sb.from('siswa').select('*').order('nis'))).map(r=>({id:r.id,nis:r.nis,nama:r.nama,kelasId:r.kelas_id,noWa:r.no_wa||'',ortu:r.ortu||''}))}
+async function lr(a,b){if(!sb)return;try{riwayat=(await fetchAll(()=>sb.from('absensi').select('*').gte('tanggal',a).lte('tanggal',b).order('id'))).map(r=>({nis:r.nis,nama:r.nama,kelasId:r.kelas_id,status:'Hadir',waktu:r.waktu,tanggal:idDate(r.tanggal)}))}catch(e){toast('Gagal memuat absensi: '+e.message,'error')}}
+async function loadSettings(){if(!sb)return;const {data}=await sb.from('pengaturan').select('data').eq('id',1).maybeSingle();
+ if(data&&data.data){if(data.data.cfg)cfg=Object.assign(cfg,data.data.cfg);if(data.data.brand)brand=Object.assign({},BRAND0,data.data.brand)}}
+async function saveSettingsDb(){if(!sb)return true;return dbDo(sb.from('pengaturan').upsert({id:1,data:{cfg,brand}}))}
+async function enter(au){const {data:pr}=await sb.from('profiles').select('nama,role').eq('id',au.id).maybeSingle();
+ if(!pr){toast('Profil pengguna belum dibuat di database. Hubungi admin.','error');await sb.auth.signOut();return}
+ user={email:au.email,name:pr.nama||au.email,role:pr.role};await loadSettings();applyBrand();boot()}
 let logs=[],user=null,view='',tab='siswa',chart=null;
 const kn=id=>(kelas.find(k=>k.id===id)||{}).nama||'-';
 const today=()=>new Date().toLocaleDateString('id-ID');
 function toast(m,t='info'){const e=document.createElement('div');e.className='px-4 py-2 rounded-lg text-white text-sm shadow '+({success:'bg-emerald-500',error:'bg-red-500',info:'bg-blue-500'}[t]);e.textContent=m;$('toast').appendChild(e);setTimeout(()=>e.remove(),3500)}
 
-$('lf').onsubmit=e=>{e.preventDefault();const u=users.find(x=>x.email===$('em').value&&x.password===$('pw').value);
+$('lf').onsubmit=async e=>{e.preventDefault();
+ if(sb){const {data,error}=await sb.auth.signInWithPassword({email:$('em').value.trim(),password:$('pw').value});if(error)return toast('Login gagal: '+error.message,'error');await enter(data.user);toast('Selamat datang, '+user.name+'!','success');return}
+ const u=users.find(x=>x.email===$('em').value&&x.password===$('pw').value);
  if(!u)return toast('Email atau password salah.','error');user=u;S.set('sess',u);boot();toast('Selamat datang, '+u.name+'!','success')};
 function boot(){$('auth').classList.add('hidden');$('app').classList.remove('hidden');
- $('un').textContent=user.name;$('ui').textContent=user.name[0].toUpperCase();$('ur').textContent=user.role==='admin'?'Administrator':'Guru / Operator';
+ $('un').textContent=user.name;$('ui').textContent=user.name[0].toUpperCase();$('ur').textContent=(user.role==='admin'?'Administrator':'Guru / Operator')+(sb?' • ☁ Online':' • 💾 Lokal');
  const items=[['dashboard','📊 Dashboard',['admin']],['scan','🔍 Scan Absensi',['admin','guru']],['rekap','📄 Rekap Absensi',['admin']],['master','🗄 Data Master',['admin']],['settings','⚙️ Pengaturan',['admin']]];
  $('nav').innerHTML=items.filter(i=>i[2].includes(user.role)).map(i=>`<a href="#" data-v="${i[0]}" class="nav whitespace-nowrap block px-3 py-2 rounded-lg text-sm hover:bg-blue-50" onclick="nav('${i[0]}');return false">${i[1]}</a>`).join('');
  kiosk=kiosk||user.role==='guru';$('app').classList.toggle('kiosk',kiosk);go(kiosk?'scan':'dashboard')}
-function logout(){user=null;S.set('sess',null);$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
+function logout(){if(sb)sb.auth.signOut();user=null;S.set('sess',null);$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
 let stream=null,loopT=null,det=null,camOn=false,camBusy=false,lastTxt='',lastT=0,cvs=null;
 function camBtn(on){const b=$('bc');if(!b)return;b.textContent=on?'⏹ Matikan Kamera':'📷 Aktifkan Kamera Scanner';b.className='px-5 py-2.5 rounded-xl text-sm font-semibold border '+(on?'bg-red-50 text-red-600 border-red-200':'bg-blue-50 text-blue-600 border-blue-200')}
 async function toggleCam(){camOn?stopCam():await startCam()}
@@ -174,9 +199,10 @@ function openScan(){let w=null;try{w=window.open(location.href.split('#')[0]+'#s
  if(!w){toast('Tab baru diblokir, mode scan dibuka di tab ini.','info');setKiosk(true)}}
 function setKiosk(on){kiosk=on;$('app').classList.toggle('kiosk',on);go(on?'scan':'dashboard')}
 function kbar(){return `<div class="max-w-5xl mx-auto flex items-center justify-between mb-5 flex-wrap gap-3"><div class="flex items-center gap-3"><div class="logo" id="kl"></div><div class="leading-tight"><div class="font-extrabold" id="kn"></div><div class="text-xs text-gray-500" id="kt"></div></div></div><div class="flex gap-2">${user.role==='admin'?'<button class="tabb" onclick="setKiosk(false)">← Menu Utama</button>':''}<button class="tabb" onclick="logout()">Keluar</button></div></div>`}
-function go(v){riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa);kelas=S.get('kelas',kelas);if(v!=='scan')stopCam();view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
+async function go(v){try{if(sb)await refreshMaster();else{riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa);kelas=S.get('kelas',kelas)}}catch(e){toast('Gagal memuat data: '+e.message,'error')}
+ if(v!=='scan')stopCam();view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
 
-function dashboard(){
+async function dashboard(){const d0=new Date();d0.setDate(d0.getDate()-6);await lr(ymd(d0),ymd(new Date()));
  const t=today(),set=new Set(riwayat.filter(a=>a.tanggal===t).map(a=>a.nis));
  const belum=siswa.filter(s=>!set.has(s.nis));
  const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d});
@@ -189,13 +215,13 @@ function dashboard(){
  <ul class="divide-y max-h-64 overflow-y-auto">${belum.map(s=>`<li class="p-3 text-sm flex justify-between"><span>${s.nama}</span><span class="text-xs bg-gray-100 px-2 rounded">${kn(s.kelasId)}</span></li>`).join('')||'<li class="p-4 text-center text-sm text-green-600">Semua siswa sudah diabsen.</li>'}</ul></div></div>`;
  if(window.Chart){if(chart)chart.destroy();chart=new Chart($('ch'),{type:'line',data:{labels:days.map(d=>d.toLocaleDateString('id-ID',{weekday:'short'})),datasets:[{label:'Hadir',data,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.15)',fill:true,pointBackgroundColor:'#fff',pointBorderWidth:2,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}})}}
 
-let clkT=null;
+let clkT=null,pollT=null;
 function tick(){const c=$('clk');if(!c){clearInterval(clkT);return}const d=new Date();c.textContent=d.toLocaleTimeString('id-ID',{hour12:false}).replace(/\./g,':');$('dt').textContent=d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}
 const idle=()=>'<div class="text-center py-4 text-gray-400 text-sm"><span class="pulse"></span>Siap memindai...</div>';
 function recent(){const t=today(),all=riwayat.filter(a=>a.tanggal===t),set=new Set(all.map(a=>a.nis)),r=all.slice(-15).reverse();
  const h=set.size,tot=siswa.length;if($('sh')){$('sh').textContent=h;$('sb').textContent=Math.max(tot-h,0);$('pb').style.width=(tot?Math.min(100,Math.round(h/tot*100)):0)+'%';$('pc').textContent=(tot?Math.round(h/tot*100):0)+'% hadir ('+h+'/'+tot+')'}
  $('rc').innerHTML=r.map(x=>`<li class="p-3 flex items-center gap-3"><div class="av">${(x.nama||'?')[0]}</div><div class="flex-1 min-w-0"><div class="text-sm font-semibold truncate">${x.nama}</div><div class="text-[11px] text-gray-500 truncate">${kn(x.kelasId)} • NIS ${x.nis}</div></div><div class="text-right"><div class="text-xs font-bold text-emerald-600">✓ Hadir</div><div class="text-[11px] text-gray-400">${x.waktu}</div></div></li>`).join('')||'<li class="p-8 text-center text-sm text-gray-400"><div class="text-3xl mb-1 opacity-50">🗒️</div>Belum ada absensi hari ini.</li>'}
-function scan(){
+async function scan(){await lr(ymd(new Date()),ymd(new Date()));
  $('main').innerHTML=(kiosk?kbar():'')+`<div class="max-w-5xl mx-auto">
  <div class="hero rounded-3xl p-6 mb-5 text-white flex flex-wrap items-center justify-between gap-4"><div><div class="text-xs uppercase tracking-widest opacity-80">Absensi Kehadiran</div><h2 class="text-3xl font-extrabold" style="color:#fff">Scan Absensi</h2><p class="text-sm opacity-80 mt-1">Arahkan QR / barcode siswa ke kamera atau ketik NIS</p></div>
  <div class="text-right"><div id="clk" class="text-4xl font-extrabold tabular-nums">--:--:--</div><div id="dt" class="text-sm opacity-80"></div></div></div>
@@ -211,9 +237,10 @@ function scan(){
   <div class="bg-white rounded-2xl p-4"><div class="h-2.5 bg-indigo-100 rounded-full overflow-hidden"><div id="pb" style="height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6366f1,#d946ef);transition:width .6s"></div></div><p id="pc" class="text-xs text-gray-500 mt-2"></p></div>
   <div><h4 class="text-sm font-bold text-indigo-500 mb-2 uppercase tracking-wider">Absensi Terakhir</h4><ul id="rc" class="bg-white rounded-2xl divide-y max-h-[48vh] overflow-y-auto"></ul></div></div></div></div>`;
  if(kiosk){setLogo($('kl'),brand);$('kn').textContent=brand.name;$('kt').textContent=brand.tagline}
- clearInterval(clkT);tick();clkT=setInterval(tick,1000);recent();const i=$('si');i.focus();
- const run=async nis=>{nis=String(nis).trim();if(!nis||i.disabled)return;riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa);
-  const s=siswa.find(x=>x.nis===nis);
+ clearInterval(clkT);tick();clkT=setInterval(tick,1000);recent();clearInterval(pollT);if(sb)pollT=setInterval(async()=>{if(!$('rc')){clearInterval(pollT);return}await lr(ymd(new Date()),ymd(new Date()));recent()},10000);const i=$('si');i.focus();
+ const run=async nis=>{nis=String(nis).trim();if(!nis||i.disabled)return;if(sb){i.disabled=true;await lr(ymd(new Date()),ymd(new Date()));i.disabled=false}else{riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa)}
+  let s=siswa.find(x=>x.nis===nis);
+  if(!s&&sb){try{await refreshMaster()}catch(e){}s=siswa.find(x=>x.nis===nis)}
   if(!s){toast('Siswa dengan NIS tersebut tidak ditemukan.','error');$('sr').innerHTML=`<div class="res bad pop">❌ NIS ${nis} tidak ditemukan.</div>`;i.classList.add('shake');setTimeout(()=>{i.classList.remove('shake');if($('sr'))$('sr').innerHTML=idle()},1800);i.value='';return}
   const ex=riwayat.find(a=>a.nis===nis&&a.tanggal===today());
   if(ex){i.disabled=true;i.value='';toast(`${s.nama} sudah absen hari ini (pukul ${ex.waktu}).`,'error');
@@ -223,7 +250,10 @@ function scan(){
   $('sr').innerHTML=`<div class="res ok pop"><div class="avl">${s.nama[0]}</div><div class="flex-1 min-w-0"><div class="text-xl font-extrabold truncate">${s.nama}</div><div class="text-sm text-gray-500">NIS ${s.nis} • ${kn(s.kelasId)}</div><div id="rs" class="text-sm font-semibold text-indigo-600 mt-1">⏳ Memproses kehadiran & WA...</div></div></div>`;
   const waktu=new Date().toLocaleTimeString('id-ID'),tanggal=today();
   riwayat.push({nis,nama:s.nama,kelasId:s.kelasId,status:'Hadir',waktu,tanggal,isoDate:new Date().toISOString()});
-  S.set('riwayat',riwayat);recent();
+  if(sb){const {error}=await sb.from('absensi').insert({nis,nama:s.nama,kelas_id:s.kelasId,tanggal:ymd(new Date()),waktu});
+   if(error){riwayat.pop();if(error.code==='23505'){toast(s.nama+' sudah absen hari ini.','error');$('sr').innerHTML=`<div class="res warn pop">⚠️ ${s.nama} — Anda sudah absen hari ini</div>`;await lr(ymd(new Date()),ymd(new Date()));recent()}else toast('Database: '+error.message,'error');
+    setTimeout(()=>{if(document.body.contains(i)){$('sr').innerHTML=idle();i.disabled=false;i.value='';i.focus()}},2500);return}}
+  else S.set('riwayat',riwayat);recent();
   const r=await kirimWA(s.noWa,fillTpl(cfg.tpl,s,tanggal,waktu));
   if(!document.body.contains(i))return;
   const rs=$('rs');if(rs){rs.className='text-sm font-semibold mt-1 '+(r.ok?'text-emerald-600':'text-amber-600');rs.textContent=r.ok?'✅ Kehadiran tercatat • WA terkirim':'✅ Kehadiran tercatat • ⚠ WA gagal terkirim'}
@@ -260,7 +290,7 @@ function rekap(){
  <div id="rh" class="mb-3 text-sm font-semibold"></div>
  <div class="bg-white rounded-xl border overflow-x-auto"><table class="min-w-full text-center border-collapse" id="rt"></table></div>
  <p class="text-xs text-gray-500 mt-2">Keterangan: <b>H</b> = Hadir</p>`;rows()}
-function rows(){const m=matrix(),kl=m.k==='all'?'Semua Kelas':kn(m.k);
+async function rows(){const m0=matrix();await lr(`${m0.Y}-${p2(m0.M)}-01`,`${m0.Y}-${p2(m0.M)}-${p2(m0.n)}`);const m=matrix(),kl=m.k==='all'?'Semua Kelas':kn(m.k);
  $('rh').textContent=`Kelas: ${kl}  |  Bulan: ${BLN[m.M-1]} ${m.Y}`;
  const c='border border-gray-200 px-1.5 py-1.5 text-xs';
  let h=`<thead class="bg-gray-50"><tr><th class="${c} px-2">No</th><th class="${c} text-left px-2">Nama Siswa</th>`;
@@ -299,14 +329,15 @@ const fld=(id,l,v='')=>`<label class="block text-sm font-medium">${l}<input id="
 function fSiswa(id,kid){const s=siswa.find(x=>x.id===id)||{};if(!id&&kid)s.kelasId=kid;
  openM(id?'Edit Data Siswa':'Tambah Siswa Baru',fld('fn','NIS *',s.nis||'')+fld('fm','Nama Siswa *',s.nama||'')+
  `<label class="block text-sm font-medium">Kelas<select id="fc" class="inp mt-1">${kelas.map(k=>`<option value="${k.id}" ${k.id===s.kelasId?'selected':''}>${k.nama}</option>`).join('')}</select></label>`+fld('fw','No WA Orang Tua',s.noWa||'')+fld('fo','Nama Wali / Orang Tua',s.ortu||''),
- ()=>{const d={id:id||'s'+Date.now(),nis:$('fn').value.trim(),nama:$('fm').value.trim(),kelasId:$('fc').value,noWa:$('fw').value.trim(),ortu:$('fo').value.trim()};
+ async ()=>{const d={id:id||'s'+Date.now(),nis:$('fn').value.trim(),nama:$('fm').value.trim(),kelasId:$('fc').value,noWa:$('fw').value.trim(),ortu:$('fo').value.trim()};
   if(!d.nis||!d.nama)return toast('NIS dan Nama wajib diisi!','error');
-  const i=siswa.findIndex(x=>x.id===d.id);i>-1?siswa[i]=d:siswa.push(d);S.set('siswa',siswa);closeM();toast('Data siswa berhasil disimpan.','success');master()})}
+  if(sb&&!await dbDo(sb.from('siswa').upsert(sisDb(d))))return;const i=siswa.findIndex(x=>x.id===d.id);i>-1?siswa[i]=d:siswa.push(d);if(!sb)S.set('siswa',siswa);closeM();toast('Data siswa berhasil disimpan.','success');master()})}
 function fKelas(id){const k=kelas.find(x=>x.id===id)||{};
- openM(id?'Edit Data Kelas':'Tambah Kelas Baru',fld('kn','Nama Kelas *',k.nama||''),()=>{const n=$('kn').value.trim();if(!n)return toast('Nama kelas wajib diisi!','error');
-  id?k.nama=n:kelas.push({id:newKelasId(),nama:n});S.set('kelas',kelas);closeM();toast('Data kelas berhasil disimpan.','success');master()})}
-function del(t,id){if(t==='siswa'){siswa=siswa.filter(s=>s.id!==id);S.set('siswa',siswa)}
- else{const n=siswa.filter(s=>s.kelasId===id).length;if(n)return toast(`Gagal menghapus. Terdapat ${n} siswa di kelas ini.`,'error');kelas=kelas.filter(k=>k.id!==id);S.set('kelas',kelas)}
+ openM(id?'Edit Data Kelas':'Tambah Kelas Baru',fld('kn','Nama Kelas *',k.nama||''),async ()=>{const n=$('kn').value.trim();if(!n)return toast('Nama kelas wajib diisi!','error');
+  const ob=id?Object.assign(k,{nama:n}):{id:newKelasId(),nama:n};if(sb&&!await dbDo(sb.from('kelas').upsert(ob)))return;if(!id)kelas.push(ob);if(!sb)S.set('kelas',kelas);closeM();toast('Data kelas berhasil disimpan.','success');master()})}
+async function del(t,id){
+ if(t==='siswa'){if(sb&&!await dbDo(sb.from('siswa').delete().eq('id',id)))return;siswa=siswa.filter(s=>s.id!==id);if(!sb)S.set('siswa',siswa)}
+ else{const n=siswa.filter(s=>s.kelasId===id).length;if(n)return toast(`Gagal menghapus. Terdapat ${n} siswa di kelas ini.`,'error');if(sb&&!await dbDo(sb.from('kelas').delete().eq('id',id)))return;kelas=kelas.filter(k=>k.id!==id);if(!sb)S.set('kelas',kelas)}
  toast('Data berhasil dihapus.','success');master()}
 const KEYS={nis:['nis','nisn'],nama:['nama','name','namasiswa','namalengkap'],kelas:['kelas','class'],wa:['nowa','wa','nowaortu','nowhatsapp','hp','nohp','telepon'],ortu:['ortu','namaortu','namawali','wali','orangtua']};
 const nk_=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -331,11 +362,12 @@ function renderImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').ch
  $('isum').innerHTML=[['✅','Baru',r.add.length,'#059669'],['🔄','Diperbarui',r.upd.length,'#4f46e5'],['❌','Dilewati',r.err.length,'#dc2626']].map(x=>`<div class="rounded-xl border p-2"><div class="text-xl font-extrabold" style="color:${x[3]}">${x[2]}</div><div class="text-[11px] text-gray-500">${x[0]} ${x[1]}</div></div>`).join('');
  $('ierr').innerHTML=r.err.length?r.err.map(e=>`<div class="p-1.5 bg-red-50 rounded text-red-700">Baris ${e.line}${e.nis?' (NIS '+e.nis+')':''}: ${e.msg}</div>`).join(''):'<div class="text-emerald-600">Tidak ada baris bermasalah.</div>';
  $('ms').disabled=!(r.add.length+r.upd.length);$('ms').style.opacity=$('ms').disabled?.5:1}
-function applyImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').checked});if(!(r.add.length+r.upd.length))return;
+async function applyImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').checked});if(!(r.add.length+r.upd.length))return;
  const idOf=kl=>{let k=kelas.find(x=>x.nama.toLowerCase()===kl.toLowerCase());if(!k){k={id:newKelasId(),nama:kl};kelas.push(k)}return k.id};
  r.add.forEach(d=>siswa.push({id:'s'+Date.now()+Math.random(),nis:d.nis,nama:d.nama,kelasId:idOf(d.kl),noWa:d.wa,ortu:d.ortu||'-'}));
  r.upd.forEach(d=>{const x=siswa.find(y=>y.id===d.id);x.nama=d.nama;x.kelasId=idOf(d.kl);if(d.wa)x.noWa=d.wa;if(d.ortu)x.ortu=d.ortu});
- S.set('siswa',siswa);S.set('kelas',kelas);closeM();toast(`Import selesai: ${r.add.length} baru, ${r.upd.length} diperbarui, ${r.err.length} dilewati.`,r.err.length?'info':'success');master()}
+ if(sb){if(!await dbDo(sb.from('kelas').upsert(kelas)))return;const rs=siswa.map(sisDb);for(let q=0;q<rs.length;q+=500)if(!await dbDo(sb.from('siswa').upsert(rs.slice(q,q+500))))return}else{S.set('siswa',siswa);S.set('kelas',kelas)}
+ closeM();toast(`Import selesai: ${r.add.length} baru, ${r.upd.length} diperbarui, ${r.err.length} dilewati.`,r.err.length?'info':'success');master()}
 function impX(e){const f=e.target.files[0];if(!f)return;if(!window.XLSX){toast('Library Excel belum termuat.','error');return}
  const r=new FileReader();r.onload=ev=>{try{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'}),j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});
   if(!j.length)return toast('File Excel kosong. Gunakan template.','error');
@@ -404,12 +436,13 @@ function appPanel(){draft=Object.assign({},brand);
   r.onload=ev=>{const im=new Image();im.onload=()=>{const z=160,c=document.createElement('canvas');c.width=c.height=z;const x=c.getContext('2d'),m=Math.min(im.width,im.height);
    x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,z,z);draft.logoImg=c.toDataURL('image/png');prev()};im.onerror=()=>toast('File gambar tidak valid.','error');im.src=ev.target.result};r.readAsDataURL(f);e.target.value=''}}
 function prev(){['pl','lp','pl2'].forEach(i=>setLogo($(i),draft));$('pn').textContent=$('pn2').textContent=draft.name||'Nama Aplikasi';$('pt').textContent=$('pt2').textContent=draft.tagline||''}
-function saveBrand(){if(!draft.name.trim())return toast('Nama aplikasi wajib diisi!','error');brand=Object.assign({},draft,{name:draft.name.trim(),tagline:draft.tagline.trim()});S.set('brand',brand);applyBrand();toast('Pengaturan aplikasi berhasil disimpan!','success')}
+async function saveBrand(){if(!draft.name.trim())return toast('Nama aplikasi wajib diisi!','error');brand=Object.assign({},draft,{name:draft.name.trim(),tagline:draft.tagline.trim()});S.set('brand',brand);if(!await saveSettingsDb())return;applyBrand();toast('Pengaturan aplikasi berhasil disimpan!','success')}
 function resetBrand(){draft=Object.assign({},BRAND0);appPanel();toast('Dikembalikan ke default. Klik Simpan untuk menerapkan.','info')}
 function lg(){$('lg').innerHTML=logs.map(l=>`<li class="p-3"><div class="flex justify-between text-xs"><span class="text-gray-500">${l.waktu}</span><span class="px-2 rounded ${l.status==='Terkirim'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${l.status}</span></div><p class="text-sm font-medium">Kepada: ${l.to}</p><p class="text-xs italic bg-gray-100 p-2 rounded my-1">${l.pesan}</p><p class="text-[10px] text-gray-400 break-words">${l.res}</p></li>`).join('')||'<li class="p-6 text-center text-sm text-gray-500">Belum ada log pengiriman.</li>'}
-function simpan(){cfg={url:$('su').value.trim()||'https://tp4.wapromosi.my.id',apikey:$('st').value.trim(),sender:$('sn').value.trim(),sekolah:$('ss').value,tpl:$('sp').value};S.set('cfg',cfg);toast('Pengaturan berhasil disimpan!','success')}
+async function simpan(){cfg={url:$('su').value.trim()||'https://tp4.wapromosi.my.id',apikey:$('st').value.trim(),sender:$('sn').value.trim(),sekolah:$('ss').value,tpl:$('sp').value};S.set('cfg',cfg);if(!await saveSettingsDb())return;toast('Pengaturan berhasil disimpan!','success')}
 async function tes(){const n=$('tn').value.trim();if(!n)return toast('Masukkan nomor WA tujuan.','error');cfg.url=$('su').value.trim()||cfg.url;cfg.apikey=$('st').value.trim();cfg.sender=$('sn').value.trim();cfg.sekolah=$('ss').value;
  const r=await kirimWA(n,`Ini pesan uji dari sistem absensi ${cfg.sekolah}.`);toast(r.ok?'Berhasil terkirim!':'Gagal: '+r.msg,r.ok?'success':'error');lg()}
 applyBrand();
-const sess=S.get('sess',null);if(sess&&sess.email){user=sess;boot()}
+if(sb){$('demo').remove();sb.auth.getSession().then(async({data})=>{if(data.session)await enter(data.session.user)})}
+else{const sess=S.get('sess',null);if(sess&&sess.email){user=sess;boot()}}
 </script></body></html>
