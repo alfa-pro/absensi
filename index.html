@@ -120,6 +120,9 @@ let siswa=S.get('siswa',[
  {id:'s2',nis:'1002',nama:'Bunga Lestari',kelasId:'k1',noWa:'089876543210',ortu:'Ibu Ratna'},
  {id:'s3',nis:'1003',nama:'Candra Wijaya',kelasId:'k2',noWa:'085555555555',ortu:'Bpk. Wijaya'}]);
 let riwayat=S.get('riwayat',[]);
+function newKelasId(){const ids=new Set(kelas.map(k=>k.id));let n=1;while(ids.has(String(n).padStart(4,'0')))n++;return String(n).padStart(4,'0')}
+(function(){const map={};kelas.forEach(k=>{if(!/^\d{4}$/.test(k.id)){const o=k.id;k.id=newKelasId();map[o]=k.id}});
+ if(Object.keys(map).length){siswa.forEach(x=>{if(map[x.kelasId])x.kelasId=map[x.kelasId]});riwayat.forEach(r=>{if(map[r.kelasId])r.kelasId=map[r.kelasId]});S.set('kelas',kelas);S.set('siswa',siswa);S.set('riwayat',riwayat)}})();
 let cfg=Object.assign({url:'https://tp4.wapromosi.my.id',apikey:'',sender:'',sekolah:'SMA Negeri 1 Nusantara',tpl:'Yth. Bapak/Ibu [ORTU], ananda [NAMA] (NIS: [NIS], Kelas: [KELAS]) telah HADIR di [SEKOLAH] pada [TANGGAL] pukul [WAKTU]. Terima kasih.'},S.get('cfg',{}));
 const MIG={'[Nama Ortu]':'[ORTU]','[Nama Siswa]':'[NAMA]','[Nama Sekolah]':'[SEKOLAH]','[Kelas]':'[KELAS]','[Tanggal]':'[TANGGAL]','[Waktu]':'[WAKTU]'};Object.keys(MIG).forEach(k=>{cfg.tpl=cfg.tpl.split(k).join(MIG[k])});
 const BRAND0={name:'AbsenSmart',tagline:'Sistem Kehadiran Cerdas',logo:'📷',logoImg:''};
@@ -260,27 +263,35 @@ function exportX(){const m=matrix();if(!m.list.length)return toast('Tidak ada da
  const ws=XLSX.utils.aoa_to_sheet(aoa),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Rekap_Absensi');
  try{XLSX.writeFile(wb,`Rekap_Absensi_${BLN[m.M-1]}_${m.Y}.xlsx`);toast('File Excel diunduh.','success')}catch(e){toast('Unduhan dibatasi di preview.','info')}}
 
+let pk=null;
+function pkHtml(){if(!kelas.length)return '<div class="bg-white rounded-xl border p-8 text-center text-gray-500">Belum ada kelas. Tambahkan di tab Data Kelas.</div>';
+ if(!kelas.find(k=>k.id===pk))pk=kelas[0].id;
+ const list=siswa.filter(s=>s.kelasId===pk).sort((a,b)=>a.nama.localeCompare(b.nama));
+ const chips=`<label class="block text-sm font-medium">Pilih Kelas<select class="inp mt-1 sm:w-72" onchange="pk=this.value;master()">${kelas.map(k=>`<option value="${k.id}" ${k.id===pk?'selected':''}>${k.nama} (${siswa.filter(s=>s.kelasId===k.id).length} siswa)</option>`).join('')}</select></label>`;
+ const rows=list.map((s,i)=>`<tr><td class="td text-gray-500">${i+1}</td><td class="td font-medium">${s.nis}</td><td class="td font-semibold">${s.nama}</td><td class="td">${s.ortu&&s.ortu!=='-'?s.ortu:'<span class="text-gray-400">-</span>'}</td><td class="td font-mono text-gray-500">${s.noWa||'-'}</td><td class="td text-right"><button onclick="fSiswa('${s.id}')" class="px-2 text-blue-600">Edit</button><button onclick="del('siswa','${s.id}')" class="px-2 text-red-600">Hapus</button></td></tr>`).join('')||'<tr><td colspan="6" class="p-8 text-center text-gray-500">Belum ada siswa di kelas ini.</td></tr>';
+ return `<div class="mb-4">${chips}</div><div class="flex items-center justify-between mb-3"><div class="font-bold text-lg">Kelas ${kn(pk)}</div><span class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-3 py-1 rounded-full">${list.length} Siswa</span></div>
+ <div class="bg-white rounded-xl border overflow-x-auto"><table class="min-w-full divide-y"><thead class="bg-gray-50"><tr>${['No','NIS','Nama Siswa','Nama Ortu','No. WA Ortu','Aksi'].map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead><tbody class="divide-y">${rows}</tbody></table></div>`}
 function master(){
  const tb=(id,l)=>`<button onclick="tab='${id}';master()" class="py-3 px-1 border-b-2 text-sm font-medium ${tab===id?'border-blue-500 text-blue-600':'border-transparent text-gray-500'}">${l}</button>`;
- const sis=siswa.map(s=>`<tr><td class="td font-medium">${s.nis}</td><td class="td">${s.nama}</td><td class="td">${kn(s.kelasId)}</td><td class="td font-mono text-gray-500">${s.noWa||'-'}</td><td class="td text-right"><button onclick="fSiswa('${s.id}')" class="px-2 text-blue-600">Edit</button><button onclick="del('siswa','${s.id}')" class="px-2 text-red-600">Hapus</button></td></tr>`).join('');
+ const sis=siswa.map(s=>`<tr><td class="td font-medium">${s.nis}</td><td class="td">${s.nama}</td><td class="td">${kn(s.kelasId)}</td><td class="td">${s.ortu&&s.ortu!=='-'?s.ortu:'<span class="text-gray-400">-</span>'}</td><td class="td font-mono text-gray-500">${s.noWa||'-'}</td><td class="td text-right"><button onclick="fSiswa('${s.id}')" class="px-2 text-blue-600">Edit</button><button onclick="del('siswa','${s.id}')" class="px-2 text-red-600">Hapus</button></td></tr>`).join('');
  const kls=kelas.map(k=>`<tr><td class="td font-mono text-gray-500">${k.id}</td><td class="td font-bold">${k.nama}</td><td class="td">${siswa.filter(s=>s.kelasId===k.id).length} Siswa</td><td class="td text-right"><button onclick="fKelas('${k.id}')" class="px-2 text-blue-600">Edit</button><button onclick="del('kelas','${k.id}')" class="px-2 text-red-600">Hapus</button></td></tr>`).join('');
  $('main').innerHTML=`<div class="flex justify-between items-center mb-4 flex-wrap gap-2"><h2 class="text-2xl font-bold">Data Master</h2><div class="flex gap-2">
  <input type="file" id="xf" accept=".xlsx,.xls,.csv" class="hidden" onchange="impX(event)">
- <button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="exportMaster()">📤 Export Excel</button><button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="dlTemplate()">⬇ Template Excel</button><button class="btn" style="background:#16a34a" onclick="$('xf').click()">Import Excel</button><button class="btn" onclick="tab==='siswa'?fSiswa():fKelas()">+ Tambah Manual</button></div></div>
- ${tab==='siswa'?'<p class="text-xs text-gray-500 mb-3 -mt-2">Import Excel: kolom <b>NIS, Nama, Kelas</b> wajib; <b>NoWA, Ortu</b> opsional. Unduh <b>Template Excel</b> untuk format &amp; aturan lengkap.</p>':''}<div class="border-b mb-4 flex gap-6">${tb('siswa','Data Siswa')}${tb('kelas','Data Kelas')}</div>
- <div class="bg-white rounded-xl border overflow-x-auto"><table class="min-w-full divide-y"><thead class="bg-gray-50"><tr>${(tab==='siswa'?['NIS','Nama Lengkap','Kelas','No. WA Ortu','Aksi']:['ID','Nama Kelas','Jumlah Siswa','Aksi']).map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead><tbody class="divide-y">${tab==='siswa'?sis:kls}</tbody></table></div>`}
+ <button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="exportMaster()">📤 Export Excel</button><button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="dlTemplate()">⬇ Template Excel</button><button class="btn" style="background:#16a34a" onclick="$('xf').click()">Import Excel</button><button class="btn" onclick="tab==='kelas'?fKelas():fSiswa(null,tab==='perkelas'?pk:null)">+ Tambah Manual</button></div></div>
+ ${tab==='siswa'?'<p class="text-xs text-gray-500 mb-3 -mt-2">Import Excel: kolom <b>NIS, Nama, Kelas</b> wajib; <b>NoWA, Ortu</b> opsional. Unduh <b>Template Excel</b> untuk format &amp; aturan lengkap.</p>':''}<div class="border-b mb-4 flex gap-6">${tb('siswa','Data Siswa')}${tb('perkelas','Siswa per Kelas')}${tb('kelas','Data Kelas')}</div>
+ ${tab==='perkelas'?pkHtml():''}<div class="${tab==='perkelas'?'hidden':'bg-white rounded-xl border overflow-x-auto'}"><table class="min-w-full divide-y"><thead class="bg-gray-50"><tr>${(tab==='siswa'?['NIS','Nama Siswa','Kelas','Nama Ortu','No. WA Ortu','Aksi']:['ID','Nama Kelas','Jumlah Siswa','Aksi']).map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead><tbody class="divide-y">${tab==='siswa'?sis:kls}</tbody></table></div>`}
 function openM(t,html,fn){$('mt').textContent=t;$('mb').innerHTML=html;$('ms').textContent='Simpan';$('ms').onclick=fn;$('modal').classList.remove('hidden')}
 function closeM(){$('modal').classList.add('hidden')}
 const fld=(id,l,v='')=>`<label class="block text-sm font-medium">${l}<input id="${id}" class="inp mt-1" value="${v}"></label>`;
-function fSiswa(id){const s=siswa.find(x=>x.id===id)||{};
- openM(id?'Edit Data Siswa':'Tambah Siswa Baru',fld('fn','NIS *',s.nis||'')+fld('fm','Nama Lengkap *',s.nama||'')+
+function fSiswa(id,kid){const s=siswa.find(x=>x.id===id)||{};if(!id&&kid)s.kelasId=kid;
+ openM(id?'Edit Data Siswa':'Tambah Siswa Baru',fld('fn','NIS *',s.nis||'')+fld('fm','Nama Siswa *',s.nama||'')+
  `<label class="block text-sm font-medium">Kelas<select id="fc" class="inp mt-1">${kelas.map(k=>`<option value="${k.id}" ${k.id===s.kelasId?'selected':''}>${k.nama}</option>`).join('')}</select></label>`+fld('fw','No WA Orang Tua',s.noWa||'')+fld('fo','Nama Wali / Orang Tua',s.ortu||''),
  ()=>{const d={id:id||'s'+Date.now(),nis:$('fn').value.trim(),nama:$('fm').value.trim(),kelasId:$('fc').value,noWa:$('fw').value.trim(),ortu:$('fo').value.trim()};
   if(!d.nis||!d.nama)return toast('NIS dan Nama wajib diisi!','error');
   const i=siswa.findIndex(x=>x.id===d.id);i>-1?siswa[i]=d:siswa.push(d);S.set('siswa',siswa);closeM();toast('Data siswa berhasil disimpan.','success');master()})}
 function fKelas(id){const k=kelas.find(x=>x.id===id)||{};
  openM(id?'Edit Data Kelas':'Tambah Kelas Baru',fld('kn','Nama Kelas *',k.nama||''),()=>{const n=$('kn').value.trim();if(!n)return toast('Nama kelas wajib diisi!','error');
-  id?k.nama=n:kelas.push({id:'k'+Date.now(),nama:n});S.set('kelas',kelas);closeM();toast('Data kelas berhasil disimpan.','success');master()})}
+  id?k.nama=n:kelas.push({id:newKelasId(),nama:n});S.set('kelas',kelas);closeM();toast('Data kelas berhasil disimpan.','success');master()})}
 function del(t,id){if(t==='siswa'){siswa=siswa.filter(s=>s.id!==id);S.set('siswa',siswa)}
  else{const n=siswa.filter(s=>s.kelasId===id).length;if(n)return toast(`Gagal menghapus. Terdapat ${n} siswa di kelas ini.`,'error');kelas=kelas.filter(k=>k.id!==id);S.set('kelas',kelas)}
  toast('Data berhasil dihapus.','success');master()}
@@ -308,7 +319,7 @@ function renderImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').ch
  $('ierr').innerHTML=r.err.length?r.err.map(e=>`<div class="p-1.5 bg-red-50 rounded text-red-700">Baris ${e.line}${e.nis?' (NIS '+e.nis+')':''}: ${e.msg}</div>`).join(''):'<div class="text-emerald-600">Tidak ada baris bermasalah.</div>';
  $('ms').disabled=!(r.add.length+r.upd.length);$('ms').style.opacity=$('ms').disabled?.5:1}
 function applyImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').checked});if(!(r.add.length+r.upd.length))return;
- const idOf=kl=>{let k=kelas.find(x=>x.nama.toLowerCase()===kl.toLowerCase());if(!k){k={id:'k'+Date.now()+Math.floor(Math.random()*1e4),nama:kl};kelas.push(k)}return k.id};
+ const idOf=kl=>{let k=kelas.find(x=>x.nama.toLowerCase()===kl.toLowerCase());if(!k){k={id:newKelasId(),nama:kl};kelas.push(k)}return k.id};
  r.add.forEach(d=>siswa.push({id:'s'+Date.now()+Math.random(),nis:d.nis,nama:d.nama,kelasId:idOf(d.kl),noWa:d.wa,ortu:d.ortu||'-'}));
  r.upd.forEach(d=>{const x=siswa.find(y=>y.id===d.id);x.nama=d.nama;x.kelasId=idOf(d.kl);if(d.wa)x.noWa=d.wa;if(d.ortu)x.ortu=d.ortu});
  S.set('siswa',siswa);S.set('kelas',kelas);closeM();toast(`Import selesai: ${r.add.length} baru, ${r.upd.length} diperbarui, ${r.err.length} dilewati.`,r.err.length?'info':'success');master()}
@@ -325,14 +336,14 @@ function impX(e){const f=e.target.files[0];if(!f)return;if(!window.XLSX){toast('
   $('ms').textContent='Import Sekarang';$('iup').onchange=$('imk').onchange=renderImp;renderImp()
  }catch(x){toast('Gagal membaca file. Pastikan format .xlsx/.xls/.csv benar.','error')}e.target.value=''};r.readAsArrayBuffer(f)}
 function exportMaster(){if(!window.XLSX)return toast('Library Excel belum termuat.','error');
- const sis=tab==='siswa';
- const rows=sis?[...siswa].sort((a,b)=>kn(a.kelasId).localeCompare(kn(b.kelasId))||a.nama.localeCompare(b.nama)).map(x=>({NIS:String(x.nis),Nama:x.nama,Kelas:kn(x.kelasId),NoWA:String(x.noWa||''),Ortu:x.ortu||''}))
+ const sis=tab!=='kelas',pks=tab==='perkelas';
+ const rows=sis?[...(pks?siswa.filter(x=>x.kelasId===pk):siswa)].sort((a,b)=>kn(a.kelasId).localeCompare(kn(b.kelasId))||a.nama.localeCompare(b.nama)).map(x=>({NIS:String(x.nis),Nama:x.nama,Kelas:kn(x.kelasId),NoWA:String(x.noWa||''),Ortu:x.ortu||''}))
   :kelas.map(k=>({'ID Kelas':k.id,'Nama Kelas':k.nama,'Jumlah Siswa':siswa.filter(x=>x.kelasId===k.id).length}));
  if(!rows.length)return toast('Tidak ada data yang bisa diexport!','error');
  const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=sis?[{wch:14},{wch:28},{wch:16},{wch:18},{wch:20}]:[{wch:16},{wch:22},{wch:14}];
  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sis?'Data_Siswa':'Data_Kelas');
  const d=new Date().toISOString().slice(0,10);
- try{XLSX.writeFile(wb,(sis?'Data_Siswa_':'Data_Kelas_')+d+'.xlsx');toast(`${rows.length} data ${sis?'siswa':'kelas'} berhasil diexport.`,'success')}catch(e){toast('Unduhan dibatasi di preview; jalankan di hosting sendiri.','info')}}
+ try{XLSX.writeFile(wb,(sis?'Data_Siswa_'+(pks?kn(pk).replace(/\s+/g,'_')+'_':''):'Data_Kelas_')+d+'.xlsx');toast(`${rows.length} data ${sis?'siswa':'kelas'} berhasil diexport.`,'success')}catch(e){toast('Unduhan dibatasi di preview; jalankan di hosting sendiri.','info')}}
 function dlTemplate(){if(!window.XLSX)return toast('Library Excel belum termuat.','error');
  const k=kelas.map(x=>x.nama),k1=k[0]||'X MIPA 1',k2=k[1]||k1;
  const t=[['NIS','Nama','Kelas','NoWA','Ortu'],['1001','Contoh Siswa Satu',k1,'081234567890','Bpk. Contoh'],['1002','Contoh Siswa Dua',k2,'6281298765432','Ibu Contoh']];
