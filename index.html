@@ -118,7 +118,7 @@ const users=[{email:'admin@tp.com',password:'adminbukit',name:'Siska Admin',role
 /* ===== KONFIGURASI SUPABASE =====
    Isi 2 nilai ini dari Supabase: Project Settings > API (Project URL & anon public key).
    Jika dikosongkan, aplikasi berjalan dalam MODE LOKAL (data hanya di browser ini). */
-const SB_URL='https://bnqpdrjjyukodvmoevyc.supabase.co/rest/v1/',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJucXBkcmpqeXVrb2R2bW9ldnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NDQyNTAsImV4cCI6MjEwNzAyMDI1MH0.SDJpt2y17GD7xjmMtD9tO9vDbPiIIA2Lu_vSQrtetMw';
+const SB_URL='https://bnqpdrjjyukodvmoevyc.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJucXBkcmpqeXVrb2R2bW9ldnljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NDQyNTAsImV4cCI6MjEwNzAyMDI1MH0.SDJpt2y17GD7xjmMtD9tO9vDbPiIIA2Lu_vSQrtetMw';
 let sb=null;try{if(SB_URL&&SB_KEY&&window.supabase)sb=window.supabase.createClient(SB_URL,SB_KEY)}catch(e){}
 let kelas=S.get('kelas',[{id:'k1',nama:'X MIPA 1'},{id:'k2',nama:'X IPS 1'}]);
 let siswa=S.get('siswa',[
