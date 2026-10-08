@@ -2,6 +2,7 @@
 <html lang="id"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Aplikasi Absensi Siswa WA</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -14,17 +15,51 @@ html,body{height:100%}body{font-family:Inter,system-ui,sans-serif;background:#f9
 .btn{padding:.5rem 1rem;border-radius:.5rem;font-size:.875rem;font-weight:500;color:#fff;background:#2563eb}
 .th{padding:.75rem 1.25rem;text-align:left;font-size:.7rem;text-transform:uppercase;color:#6b7280}
 .td{padding:.75rem 1.25rem;font-size:.875rem;white-space:nowrap}
+
+body{font-family:'Plus Jakarta Sans',Inter,system-ui,sans-serif;background:linear-gradient(135deg,#eef2ff 0%,#f8fafc 50%,#fdf4ff 100%);background-attachment:fixed;color:#1e1b4b}
+.login-bg{background:radial-gradient(circle at 15% 20%,#818cf8 0,transparent 40%),radial-gradient(circle at 85% 80%,#f0abfc 0,transparent 40%),linear-gradient(135deg,#312e81,#4f46e5 60%,#7c3aed)}
+.glass{background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.6);box-shadow:0 25px 60px rgba(30,27,75,.35)}
+.logo{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#a855f7);color:#fff;box-shadow:0 6px 16px rgba(99,102,241,.45)}
+aside{background:linear-gradient(180deg,#1e1b4b 0%,#312e81 100%)!important;border:0!important;color:#fff}
+aside .border-b{border-color:rgba(255,255,255,.1)!important}
+aside p{color:#fff}aside #ur{color:#c7d2fe}
+aside .nav{color:#c7d2fe;transition:.2s;margin-bottom:2px}
+aside .nav:hover{background:rgba(255,255,255,.1)!important;color:#fff}
+aside .nav.on{background:linear-gradient(90deg,rgba(129,140,248,.5),rgba(167,139,250,.15))!important;color:#fff!important;box-shadow:inset 3px 0 0 #a5b4fc}
+aside>button{color:#fca5a5}aside>button:hover{background:rgba(248,113,113,.15)!important}
+#ui{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#f472b6,#a855f7);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;box-shadow:0 0 0 3px rgba(255,255,255,.2)}
+main h2{font-weight:800;letter-spacing:-.02em;color:#1e1b4b}
+main>*{animation:up .35s ease both}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#toast>div{animation:in .3s ease;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+@keyframes in{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:none}}
+.bg-white.rounded-xl,.bg-white.rounded-2xl{border:1px solid #eef0f8!important;box-shadow:0 6px 24px rgba(79,70,229,.07);border-radius:1rem}
+.btn{background:linear-gradient(135deg,#6366f1,#8b5cf6);box-shadow:0 6px 16px rgba(99,102,241,.35);transition:.2s;border-radius:.75rem}
+.btn:hover{transform:translateY(-1px);box-shadow:0 10px 22px rgba(99,102,241,.45)}
+.inp{border-radius:.75rem;border:1.5px solid #e0e7ff;transition:.2s}
+.inp:focus{outline:0;border-color:#818cf8;box-shadow:0 0 0 4px rgba(129,140,248,.2)}
+.p-5.bg-blue-600{background:linear-gradient(135deg,#4f46e5,#7c3aed,#c026d3)}
+thead.bg-gray-50{background:linear-gradient(90deg,#eef2ff,#faf5ff)}
+.th{color:#6366f1;font-weight:700}
+tbody tr:hover{background:#f5f3ff}
+.stat{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;position:relative;overflow:hidden;transition:.2s}
+.stat:hover{transform:translateY(-3px)}
+.stat .ic{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+.stat b{font-size:2rem;font-weight:800;line-height:1.1}
+.logo{overflow:hidden}.logo img{width:100%;height:100%;object-fit:cover}
+.tabb{padding:.5rem 1.1rem;border-radius:999px;font-size:.875rem;font-weight:600;border:1.5px solid #e0e7ff;background:#fff;color:#6366f1;transition:.2s}.tabb.on{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-color:transparent;box-shadow:0 6px 16px rgba(99,102,241,.35)}
+#app.kiosk aside{display:none}
 </style></head>
 <body>
 <div id="toast" class="fixed top-4 right-4 z-[999] space-y-2"></div>
 
-<div id="auth" class="h-full flex items-center justify-center bg-blue-50 p-4">
- <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-  <div class="text-center mb-6"><div class="text-4xl mb-2">📷</div><h1 class="text-2xl font-bold">Absensi WA</h1><p class="text-sm text-gray-500">Sistem Kehadiran Cerdas</p></div>
+<div id="auth" class="h-full flex items-center justify-center login-bg p-4">
+ <div class="glass p-8 rounded-3xl w-full max-w-md">
+  <div class="text-center mb-6"><div id="bl" class="logo mx-auto mb-3" style="width:68px;height:68px;font-size:32px;border-radius:22px">📷</div><h1 id="bn" class="text-2xl font-extrabold"></h1><p id="bt" class="text-sm text-gray-500"></p></div>
   <form id="lf" class="space-y-4">
    <input id="em" type="email" required class="inp" placeholder="admin@sekolah.com">
    <input id="pw" type="password" required class="inp" placeholder="Password">
-   <button class="btn w-full py-2.5">Masuk ke Sistem</button>
+   <button class="btn w-full py-3 text-base">Masuk ke Sistem →</button>
   </form>
   <div class="mt-5 p-3 bg-blue-50 rounded-lg text-xs text-blue-800"><b>Info Testing:</b><br>Admin: admin@sekolah.com / admin<br>Guru: guru@sekolah.com / guru</div>
  </div>
@@ -32,8 +67,8 @@ html,body{height:100%}body{font-family:Inter,system-ui,sans-serif;background:#f9
 
 <div id="app" class="hidden h-full flex flex-col md:flex-row">
  <aside class="md:w-60 bg-white border-r flex-shrink-0 flex flex-col">
-  <div class="h-14 flex items-center px-5 border-b font-bold text-lg">Absen<span class="text-blue-600">Smart</span></div>
-  <div class="p-4 border-b"><p id="un" class="text-sm font-semibold"></p><p id="ur" class="text-xs text-gray-500"></p></div>
+  <div class="h-16 flex items-center gap-3 px-5 border-b font-extrabold text-lg"><div class="logo" id="sl"></div><div class="min-w-0 leading-tight"><div id="sn2" class="truncate"></div><div id="st2" class="text-[10px] font-medium truncate" style="color:#a5b4fc"></div></div></div>
+  <div class="p-4 border-b flex items-center gap-3"><div id="ui"></div><div class="min-w-0"><p id="un" class="text-sm font-semibold truncate"></p><p id="ur" class="text-xs"></p></div></div>
   <nav id="nav" class="flex md:block md:flex-1 overflow-x-auto p-2 gap-1"></nav>
   <button onclick="logout()" class="m-3 text-left px-3 py-2 text-sm text-red-600 rounded-lg hover:bg-red-50">⎋ Keluar</button>
  </aside>
@@ -64,19 +99,22 @@ let siswa=S.get('siswa',[
 let riwayat=S.get('riwayat',[]);
 let cfg=Object.assign({url:'https://tp4.wapromosi.my.id',apikey:'',sender:'',sekolah:'SMA Negeri 1 Nusantara',tpl:'Yth. Bapak/Ibu [ORTU], ananda [NAMA] (NIS: [NIS], Kelas: [KELAS]) telah HADIR di [SEKOLAH] pada [TANGGAL] pukul [WAKTU]. Terima kasih.'},S.get('cfg',{}));
 const MIG={'[Nama Ortu]':'[ORTU]','[Nama Siswa]':'[NAMA]','[Nama Sekolah]':'[SEKOLAH]','[Kelas]':'[KELAS]','[Tanggal]':'[TANGGAL]','[Waktu]':'[WAKTU]'};Object.keys(MIG).forEach(k=>{cfg.tpl=cfg.tpl.split(k).join(MIG[k])});
+const BRAND0={name:'AbsenSmart',tagline:'Sistem Kehadiran Cerdas',logo:'📷',logoImg:''};
+let brand=Object.assign({},BRAND0,S.get('brand',{}));
+let kiosk=false;try{kiosk=location.hash==='#scan'}catch(e){}
 let logs=[],user=null,view='',tab='siswa',chart=null;
 const kn=id=>(kelas.find(k=>k.id===id)||{}).nama||'-';
 const today=()=>new Date().toLocaleDateString('id-ID');
 function toast(m,t='info'){const e=document.createElement('div');e.className='px-4 py-2 rounded-lg text-white text-sm shadow '+({success:'bg-emerald-500',error:'bg-red-500',info:'bg-blue-500'}[t]);e.textContent=m;$('toast').appendChild(e);setTimeout(()=>e.remove(),3500)}
 
 $('lf').onsubmit=e=>{e.preventDefault();const u=users.find(x=>x.email===$('em').value&&x.password===$('pw').value);
- if(!u)return toast('Email atau password salah.','error');user=u;boot();toast('Selamat datang, '+u.name+'!','success')};
+ if(!u)return toast('Email atau password salah.','error');user=u;S.set('sess',u);boot();toast('Selamat datang, '+u.name+'!','success')};
 function boot(){$('auth').classList.add('hidden');$('app').classList.remove('hidden');
- $('un').textContent=user.name;$('ur').textContent=user.role==='admin'?'Administrator':'Guru / Operator';
- const items=[['dashboard','📊 Dashboard',['admin']],['scan','🔍 Scan Absensi',['admin','guru']],['rekap','📄 Rekap Absensi',['admin']],['master','🗄 Data Master',['admin']],['settings','💬 Pengaturan WA',['admin']]];
- $('nav').innerHTML=items.filter(i=>i[2].includes(user.role)).map(i=>`<a href="#" data-v="${i[0]}" class="nav whitespace-nowrap block px-3 py-2 rounded-lg text-sm hover:bg-blue-50" onclick="go('${i[0]}');return false">${i[1]}</a>`).join('');
- go(user.role==='admin'?'dashboard':'scan')}
-function logout(){user=null;$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
+ $('un').textContent=user.name;$('ui').textContent=user.name[0].toUpperCase();$('ur').textContent=user.role==='admin'?'Administrator':'Guru / Operator';
+ const items=[['dashboard','📊 Dashboard',['admin']],['scan','🔍 Scan Absensi',['admin','guru']],['rekap','📄 Rekap Absensi',['admin']],['master','🗄 Data Master',['admin']],['settings','⚙️ Pengaturan',['admin']]];
+ $('nav').innerHTML=items.filter(i=>i[2].includes(user.role)).map(i=>`<a href="#" data-v="${i[0]}" class="nav whitespace-nowrap block px-3 py-2 rounded-lg text-sm hover:bg-blue-50" onclick="nav('${i[0]}');return false">${i[1]}</a>`).join('');
+ kiosk=kiosk||user.role==='guru';$('app').classList.toggle('kiosk',kiosk);go(kiosk?'scan':'dashboard')}
+function logout(){user=null;S.set('sess',null);$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
 let qr=null,camOn=false,camBusy=false;
 function camBtn(on){const b=$('bc');if(!b)return;b.textContent=on?'⏹ Matikan Kamera':'📷 Aktifkan Kamera Scanner';b.className='px-5 py-2.5 rounded-lg text-sm font-semibold border '+(on?'bg-red-50 text-red-600 border-red-200':'bg-blue-50 text-blue-600 border-blue-200')}
 async function toggleCam(){camOn?await stopCam():await startCam()}
@@ -92,25 +130,30 @@ async function startCam(){const rd=$('reader'),er=$('cerr');if(camBusy)return;
   er.textContent='Kamera tidak bisa diakses ('+(e&&e.message||e)+'). Izinkan akses kamera di browser; di preview ini kamera bisa diblokir, jalankan di hosting HTTPS sendiri.';er.classList.remove('hidden')}
  camBusy=false}
 async function stopCam(){try{if(qr&&camOn)await qr.stop()}catch(e){}camOn=false;const rd=$('reader');if(rd)rd.classList.add('hidden');camBtn(false)}
-function go(v){if(v!=='scan')stopCam();view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
+function nav(v){v==='scan'?openScan():go(v)}
+function openScan(){let w=null;try{w=window.open(location.href.split('#')[0]+'#scan','_blank')}catch(e){}
+ if(!w){toast('Tab baru diblokir, mode scan dibuka di tab ini.','info');setKiosk(true)}}
+function setKiosk(on){kiosk=on;$('app').classList.toggle('kiosk',on);go(on?'scan':'dashboard')}
+function kbar(){return `<div class="max-w-5xl mx-auto flex items-center justify-between mb-5 flex-wrap gap-3"><div class="flex items-center gap-3"><div class="logo" id="kl"></div><div class="leading-tight"><div class="font-extrabold" id="kn"></div><div class="text-xs text-gray-500" id="kt"></div></div></div><div class="flex gap-2">${user.role==='admin'?'<button class="tabb" onclick="setKiosk(false)">← Menu Utama</button>':''}<button class="tabb" onclick="logout()">Keluar</button></div></div>`}
+function go(v){riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa);kelas=S.get('kelas',kelas);if(v!=='scan')stopCam();view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
 
 function dashboard(){
  const t=today(),set=new Set(riwayat.filter(a=>a.tanggal===t).map(a=>a.nis));
  const belum=siswa.filter(s=>!set.has(s.nis));
  const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return d});
  const data=days.map(d=>riwayat.filter(a=>a.tanggal===d.toLocaleDateString('id-ID')).length);
- const card=(l,v,c)=>`<div class="bg-white rounded-xl p-5 shadow-sm border border-l-4 ${c}"><p class="text-sm text-gray-500">${l}</p><p class="text-3xl font-bold">${v}</p></div>`;
+ const card=(l,v,i,g)=>`<div class="stat bg-white rounded-xl"><div><p class="text-sm text-gray-500 font-medium">${l}</p><b>${v}</b></div><div class="ic" style="background:${g}">${i}</div></div>`;
  $('main').innerHTML=`<h2 class="text-2xl font-bold mb-5">Dashboard</h2>
- <div class="grid md:grid-cols-3 gap-4 mb-6">${card('Total Siswa',siswa.length,'border-l-blue-500')}${card('Hadir Hari Ini',set.size,'border-l-green-500')}${card('Belum Absen',belum.length,'border-l-red-500')}</div>
+ <div class="grid md:grid-cols-3 gap-4 mb-6">${card('Total Siswa',siswa.length,'👥','linear-gradient(135deg,#6366f1,#8b5cf6)')}${card('Hadir Hari Ini',set.size,'✅','linear-gradient(135deg,#10b981,#34d399)')}${card('Belum Absen',belum.length,'⏳','linear-gradient(135deg,#f43f5e,#fb923c)')}</div>
  <div class="grid lg:grid-cols-3 gap-4"><div class="lg:col-span-2 bg-white rounded-xl border p-4"><h3 class="font-semibold mb-3">Tren Kehadiran 7 Hari Terakhir</h3><div class="h-64"><canvas id="ch"></canvas></div></div>
  <div class="bg-white rounded-xl border overflow-hidden"><div class="p-3 border-b bg-gray-50 font-semibold flex justify-between">Belum Absen Hari Ini<span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">${belum.length} Siswa</span></div>
  <ul class="divide-y max-h-64 overflow-y-auto">${belum.map(s=>`<li class="p-3 text-sm flex justify-between"><span>${s.nama}</span><span class="text-xs bg-gray-100 px-2 rounded">${kn(s.kelasId)}</span></li>`).join('')||'<li class="p-4 text-center text-sm text-green-600">Semua siswa sudah diabsen.</li>'}</ul></div></div>`;
- if(window.Chart){if(chart)chart.destroy();chart=new Chart($('ch'),{type:'line',data:{labels:days.map(d=>d.toLocaleDateString('id-ID',{weekday:'short'})),datasets:[{label:'Hadir',data,borderColor:'#10b981',tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}})}}
+ if(window.Chart){if(chart)chart.destroy();chart=new Chart($('ch'),{type:'line',data:{labels:days.map(d=>d.toLocaleDateString('id-ID',{weekday:'short'})),datasets:[{label:'Hadir',data,borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.15)',fill:true,pointBackgroundColor:'#fff',pointBorderWidth:2,tension:.4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}})}}
 
 function recent(){const r=riwayat.filter(a=>a.tanggal===today()).slice(-15).reverse();
  $('rc').innerHTML=r.map(x=>`<li class="p-3 flex justify-between"><div><div class="text-sm font-semibold">${x.nama}</div><div class="text-[11px] text-gray-500">NIS: ${x.nis} • jam ${x.waktu}</div></div><span class="text-[10px] font-bold px-2 py-1 rounded bg-green-50 text-green-600 h-fit">✓ Hadir</span></li>`).join('')||'<li class="p-4 text-center text-sm text-gray-500">Belum ada absensi hari ini.</li>'}
 function scan(){
- $('main').innerHTML=`<div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-5">
+ $('main').innerHTML=(kiosk?kbar():'')+`<div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-5">
  <div class="lg:col-span-7 bg-white rounded-2xl border overflow-hidden"><div class="p-5 bg-blue-600 text-white text-center"><h2 class="text-2xl font-bold">Scan Barcode / Input NIS</h2><p class="text-blue-100 text-sm">Pastikan kursor berada di kotak input sebelum scan.</p></div>
  <div class="p-6"><div class="flex flex-col items-center mb-4"><button id="bc" onclick="toggleCam()" class="px-5 py-2.5 rounded-lg text-sm font-semibold border bg-blue-50 text-blue-600 border-blue-200">📷 Aktifkan Kamera Scanner</button>
  <div id="reader" class="w-full max-w-sm mt-3 hidden overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-black"></div><p id="cerr" class="text-xs text-red-600 mt-2 hidden"></p></div>
@@ -118,8 +161,9 @@ function scan(){
  <p class="text-xs text-gray-400 text-center mt-2">Coba NIS: 1001, 1002, 1003 lalu Enter, atau scan QR/barcode yang berisi NIS.</p>
  <div id="sr" class="mt-5 text-center text-gray-400 py-6">Menunggu input scan...</div></div></div>
  <div class="lg:col-span-5"><h4 class="text-sm font-semibold text-gray-500 mb-2 uppercase">Absensi Terakhir</h4><ul id="rc" class="bg-white rounded-xl border divide-y max-h-[60vh] overflow-y-auto"></ul></div></div>`;
+ if(kiosk){setLogo($('kl'),brand);$('kn').textContent=brand.name;$('kt').textContent=brand.tagline}
  recent();const i=$('si');i.focus();
- const run=async nis=>{nis=String(nis).trim();if(!nis||i.disabled)return;
+ const run=async nis=>{nis=String(nis).trim();if(!nis||i.disabled)return;riwayat=S.get('riwayat',riwayat);siswa=S.get('siswa',siswa);
   const s=siswa.find(x=>x.nis===nis);
   if(!s){toast('Siswa dengan NIS tersebut tidak ditemukan.','error');i.value='';return}
   i.disabled=true;$('sr').innerHTML=`<div class="text-gray-800 text-left border rounded-xl p-4 bg-slate-50"><div class="text-xl font-bold">${s.nama}</div><div class="text-sm text-gray-500">NIS ${s.nis} • ${kn(s.kelasId)} • WA ${s.noWa}</div><div class="mt-3 text-center p-2 bg-blue-50 text-blue-700 rounded-lg">Memproses Kehadiran & WA...</div></div>`;
@@ -208,8 +252,8 @@ function impX(e){const f=e.target.files[0];if(!f||!window.XLSX)return;const r=ne
    i>-1?(siswa[i]=d,u++):(siswa.push(d),a++)});S.set('siswa',siswa);toast(`${a} siswa baru ditambahkan, ${u} diperbarui.`,'success');master()}
   catch(x){toast('Gagal membaca file.','error')}e.target.value=''};r.readAsArrayBuffer(f)}
 
-function settings(){
- $('main').innerHTML=`<h2 class="text-2xl font-bold mb-5">Pengaturan WhatsApp API</h2><div class="grid lg:grid-cols-2 gap-6">
+function waPanel(){
+ $('sc').innerHTML=`<div class="grid lg:grid-cols-2 gap-6">
  <div class="bg-white rounded-xl border p-5 space-y-3"><h3 class="font-medium">Konfigurasi WA Gateway (MPWA)</h3>
  <div class="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">Server: tp4.wapromosi.my.id (MPWA). Login ke dashboard, hubungkan nomor WhatsApp (scan QR) di menu Devices, lalu salin API Key dan nomor device ke kolom di bawah.</div>
  <label class="block text-sm font-medium">URL Server WA Gateway<input id="su" class="inp mt-1" value="${cfg.url}" placeholder="https://tp4.wapromosi.my.id"></label>
@@ -220,8 +264,39 @@ function settings(){
  <p class="text-xs bg-gray-50 p-2 rounded border">Variabel: [NAMA] (nama siswa), [ORTU] (nama orang tua), [NIS], [KELAS], [SEKOLAH], [TANGGAL], [WAKTU]</p>
  <div class="flex gap-2 pt-3 border-t flex-wrap"><input id="tn" class="inp flex-1" placeholder="No. WA tes (0812...)"><button class="btn bg-gray-600" style="background:#4b5563" onclick="tes()">Test Kirim</button><button class="btn" onclick="simpan()">Simpan</button></div></div>
  <div class="bg-white rounded-xl border overflow-hidden"><div class="p-3 border-b bg-gray-50 font-medium">Log Notifikasi (Terbaru)</div><ul id="lg" class="divide-y max-h-[30rem] overflow-y-auto"></ul></div></div>`;lg()}
+let stab='wa',draft=null;
+function settings(){draft=null;
+ $('main').innerHTML=`<h2 class="text-2xl font-bold mb-5">Pengaturan</h2><div class="flex gap-2 mb-5 flex-wrap"><button class="tabb ${stab==='wa'?'on':''}" onclick="stab='wa';settings()">💬 Pengaturan WA</button><button class="tabb ${stab==='app'?'on':''}" onclick="stab='app';settings()">🎨 Pengaturan Aplikasi</button></div><div id="sc"></div>`;
+ stab==='wa'?waPanel():appPanel()}
+function setLogo(el,b){if(!el)return;el.textContent='';if(b.logoImg){const i=document.createElement('img');i.src=b.logoImg;i.alt='logo';el.appendChild(i)}else el.textContent=b.logo||'📷'}
+function applyBrand(){document.title=brand.name+' - '+brand.tagline;
+ $('bn').textContent=brand.name;$('bt').textContent=brand.tagline;$('sn2').textContent=brand.name;$('st2').textContent=brand.tagline;
+ setLogo($('bl'),brand);setLogo($('sl'),brand)}
+function appPanel(){draft=Object.assign({},brand);
+ $('sc').innerHTML=`<div class="grid lg:grid-cols-2 gap-6"><div class="bg-white rounded-xl p-5 space-y-4"><h3 class="font-medium">Identitas Aplikasi</h3>
+ <label class="block text-sm font-medium">Nama Aplikasi<input id="an" class="inp mt-1" maxlength="30"></label>
+ <label class="block text-sm font-medium">Tagline<input id="at" class="inp mt-1" maxlength="60"></label>
+ <div><p class="text-sm font-medium mb-2">Logo</p><div class="flex items-center gap-4 flex-wrap"><div id="lp" class="logo" style="width:72px;height:72px;font-size:34px;border-radius:20px"></div>
+ <div class="space-y-2"><div class="flex items-center gap-2"><input id="le" class="inp text-center text-xl" style="width:72px" maxlength="4" placeholder="📷"><span class="text-xs text-gray-500">Emoji / karakter sebagai logo</span></div>
+ <input type="file" id="lgf" accept="image/*" class="hidden"><div class="flex gap-2 flex-wrap"><button class="btn" onclick="$('lgf').click()">⬆ Upload Gambar Logo</button><button class="px-3 py-2 border rounded-xl text-sm" onclick="draft.logoImg='';prev()">Hapus Gambar</button></div>
+ <p class="text-xs text-gray-400">Gambar otomatis dipotong persegi &amp; dikecilkan.</p></div></div></div>
+ <div class="flex gap-2 pt-3 border-t flex-wrap"><button class="btn" onclick="saveBrand()">Simpan Pengaturan</button><button class="px-4 py-2 border rounded-xl text-sm" onclick="resetBrand()">Kembalikan Default</button></div></div>
+ <div class="bg-white rounded-xl p-5"><h3 class="font-medium mb-4">Pratinjau</h3>
+ <div class="rounded-xl p-4 mb-4 flex items-center gap-3 text-white font-extrabold" style="background:linear-gradient(180deg,#1e1b4b,#312e81)"><div id="pl" class="logo"></div><div class="leading-tight min-w-0"><div id="pn" class="truncate"></div><div id="pt" class="text-[10px] font-medium truncate" style="color:#a5b4fc"></div></div></div>
+ <div class="rounded-2xl p-6 text-center text-white" style="background:linear-gradient(135deg,#312e81,#4f46e5 60%,#7c3aed)"><div id="pl2" class="logo mx-auto mb-2" style="width:60px;height:60px;font-size:28px;border-radius:20px"></div><div id="pn2" class="text-xl font-extrabold"></div><div id="pt2" class="text-sm opacity-80"></div></div></div></div>`;
+ $('an').value=draft.name;$('at').value=draft.tagline;$('le').value=draft.logo;prev();
+ $('an').oninput=e=>{draft.name=e.target.value;prev()};$('at').oninput=e=>{draft.tagline=e.target.value;prev()};
+ $('le').oninput=e=>{draft.logo=e.target.value.trim()||'📷';prev()};
+ $('lgf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=ev=>{const im=new Image();im.onload=()=>{const z=160,c=document.createElement('canvas');c.width=c.height=z;const x=c.getContext('2d'),m=Math.min(im.width,im.height);
+   x.drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,z,z);draft.logoImg=c.toDataURL('image/png');prev()};im.onerror=()=>toast('File gambar tidak valid.','error');im.src=ev.target.result};r.readAsDataURL(f);e.target.value=''}}
+function prev(){['pl','lp','pl2'].forEach(i=>setLogo($(i),draft));$('pn').textContent=$('pn2').textContent=draft.name||'Nama Aplikasi';$('pt').textContent=$('pt2').textContent=draft.tagline||''}
+function saveBrand(){if(!draft.name.trim())return toast('Nama aplikasi wajib diisi!','error');brand=Object.assign({},draft,{name:draft.name.trim(),tagline:draft.tagline.trim()});S.set('brand',brand);applyBrand();toast('Pengaturan aplikasi berhasil disimpan!','success')}
+function resetBrand(){draft=Object.assign({},BRAND0);appPanel();toast('Dikembalikan ke default. Klik Simpan untuk menerapkan.','info')}
 function lg(){$('lg').innerHTML=logs.map(l=>`<li class="p-3"><div class="flex justify-between text-xs"><span class="text-gray-500">${l.waktu}</span><span class="px-2 rounded ${l.status==='Terkirim'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${l.status}</span></div><p class="text-sm font-medium">Kepada: ${l.to}</p><p class="text-xs italic bg-gray-100 p-2 rounded my-1">${l.pesan}</p><p class="text-[10px] text-gray-400 break-words">${l.res}</p></li>`).join('')||'<li class="p-6 text-center text-sm text-gray-500">Belum ada log pengiriman.</li>'}
 function simpan(){cfg={url:$('su').value.trim()||'https://tp4.wapromosi.my.id',apikey:$('st').value.trim(),sender:$('sn').value.trim(),sekolah:$('ss').value,tpl:$('sp').value};S.set('cfg',cfg);toast('Pengaturan berhasil disimpan!','success')}
 async function tes(){const n=$('tn').value.trim();if(!n)return toast('Masukkan nomor WA tujuan.','error');cfg.url=$('su').value.trim()||cfg.url;cfg.apikey=$('st').value.trim();cfg.sender=$('sn').value.trim();cfg.sekolah=$('ss').value;
  const r=await kirimWA(n,`Ini pesan uji dari sistem absensi ${cfg.sekolah}.`);toast(r.ok?'Berhasil terkirim!':'Gagal: '+r.msg,r.ok?'success':'error');lg()}
+applyBrand();
+const sess=S.get('sess',null);if(sess&&sess.email){user=sess;boot()}
 </script></body></html>
