@@ -4,6 +4,7 @@
 <title>Aplikasi Absensi Siswa WA</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -61,7 +62,8 @@ let siswa=S.get('siswa',[
  {id:'s2',nis:'1002',nama:'Bunga Lestari',kelasId:'k1',noWa:'089876543210',ortu:'Ibu Ratna'},
  {id:'s3',nis:'1003',nama:'Candra Wijaya',kelasId:'k2',noWa:'085555555555',ortu:'Bpk. Wijaya'}]);
 let riwayat=S.get('riwayat',[]);
-let cfg=Object.assign({url:'https://tp4.wapromosi.my.id',apikey:'',sender:'',sekolah:'SMA Negeri 1 Nusantara',tpl:'Yth. Bapak/Ibu [Nama Ortu], ananda [Nama Siswa] (NIS: [NIS], Kelas: [Kelas]) telah HADIR di [Nama Sekolah] pada [Tanggal] pukul [Waktu]. Terima kasih.'},S.get('cfg',{}));
+let cfg=Object.assign({url:'https://tp4.wapromosi.my.id',apikey:'',sender:'',sekolah:'SMA Negeri 1 Nusantara',tpl:'Yth. Bapak/Ibu [ORTU], ananda [NAMA] (NIS: [NIS], Kelas: [KELAS]) telah HADIR di [SEKOLAH] pada [TANGGAL] pukul [WAKTU]. Terima kasih.'},S.get('cfg',{}));
+const MIG={'[Nama Ortu]':'[ORTU]','[Nama Siswa]':'[NAMA]','[Nama Sekolah]':'[SEKOLAH]','[Kelas]':'[KELAS]','[Tanggal]':'[TANGGAL]','[Waktu]':'[WAKTU]'};Object.keys(MIG).forEach(k=>{cfg.tpl=cfg.tpl.split(k).join(MIG[k])});
 let logs=[],user=null,view='',tab='siswa',chart=null;
 const kn=id=>(kelas.find(k=>k.id===id)||{}).nama||'-';
 const today=()=>new Date().toLocaleDateString('id-ID');
@@ -75,7 +77,22 @@ function boot(){$('auth').classList.add('hidden');$('app').classList.remove('hid
  $('nav').innerHTML=items.filter(i=>i[2].includes(user.role)).map(i=>`<a href="#" data-v="${i[0]}" class="nav whitespace-nowrap block px-3 py-2 rounded-lg text-sm hover:bg-blue-50" onclick="go('${i[0]}');return false">${i[1]}</a>`).join('');
  go(user.role==='admin'?'dashboard':'scan')}
 function logout(){user=null;$('app').classList.add('hidden');$('auth').classList.remove('hidden')}
-function go(v){view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
+let qr=null,camOn=false,camBusy=false;
+function camBtn(on){const b=$('bc');if(!b)return;b.textContent=on?'⏹ Matikan Kamera':'📷 Aktifkan Kamera Scanner';b.className='px-5 py-2.5 rounded-lg text-sm font-semibold border '+(on?'bg-red-50 text-red-600 border-red-200':'bg-blue-50 text-blue-600 border-blue-200')}
+async function toggleCam(){camOn?await stopCam():await startCam()}
+async function startCam(){const rd=$('reader'),er=$('cerr');if(camBusy)return;
+ if(!window.Html5Qrcode){er.textContent='Library scanner belum termuat.';er.classList.remove('hidden');return}
+ camBusy=true;er.classList.add('hidden');rd.classList.remove('hidden');$('bc').textContent='Meminta akses kamera...';
+ try{qr=qr||new Html5Qrcode('reader');
+  await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:240,height:240}},txt=>{
+   try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=800;o.start();o.stop(c.currentTime+.1)}catch(e){}
+   const i=$('si');if(i&&!i.disabled){i.value=txt;window.runScan&&window.runScan(txt)}},()=>{});
+  camOn=true;camBtn(true)
+ }catch(e){rd.classList.add('hidden');camOn=false;camBtn(false);
+  er.textContent='Kamera tidak bisa diakses ('+(e&&e.message||e)+'). Izinkan akses kamera di browser; di preview ini kamera bisa diblokir, jalankan di hosting HTTPS sendiri.';er.classList.remove('hidden')}
+ camBusy=false}
+async function stopCam(){try{if(qr&&camOn)await qr.stop()}catch(e){}camOn=false;const rd=$('reader');if(rd)rd.classList.add('hidden');camBtn(false)}
+function go(v){if(v!=='scan')stopCam();view=v;document.querySelectorAll('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));({dashboard,scan,rekap,master,settings})[v]()}
 
 function dashboard(){
  const t=today(),set=new Set(riwayat.filter(a=>a.tanggal===t).map(a=>a.nis));
@@ -95,12 +112,14 @@ function recent(){const r=riwayat.filter(a=>a.tanggal===today()).slice(-15).reve
 function scan(){
  $('main').innerHTML=`<div class="max-w-5xl mx-auto grid lg:grid-cols-12 gap-5">
  <div class="lg:col-span-7 bg-white rounded-2xl border overflow-hidden"><div class="p-5 bg-blue-600 text-white text-center"><h2 class="text-2xl font-bold">Scan Barcode / Input NIS</h2><p class="text-blue-100 text-sm">Pastikan kursor berada di kotak input sebelum scan.</p></div>
- <div class="p-6"><input id="si" autocomplete="off" class="inp text-center text-xl font-bold tracking-widest py-4 border-2" placeholder="SCAN / KETIK NIS">
- <p class="text-xs text-gray-400 text-center mt-2">Coba NIS: 1001, 1002, 1003 lalu Enter. (Scan kamera tidak tersedia di preview.)</p>
+ <div class="p-6"><div class="flex flex-col items-center mb-4"><button id="bc" onclick="toggleCam()" class="px-5 py-2.5 rounded-lg text-sm font-semibold border bg-blue-50 text-blue-600 border-blue-200">📷 Aktifkan Kamera Scanner</button>
+ <div id="reader" class="w-full max-w-sm mt-3 hidden overflow-hidden rounded-xl border-2 border-dashed border-gray-300 bg-black"></div><p id="cerr" class="text-xs text-red-600 mt-2 hidden"></p></div>
+ <div class="text-center text-xs text-gray-400 uppercase tracking-wider mb-3">atau ketik</div><input id="si" autocomplete="off" class="inp text-center text-xl font-bold tracking-widest py-4 border-2" placeholder="SCAN / KETIK NIS">
+ <p class="text-xs text-gray-400 text-center mt-2">Coba NIS: 1001, 1002, 1003 lalu Enter, atau scan QR/barcode yang berisi NIS.</p>
  <div id="sr" class="mt-5 text-center text-gray-400 py-6">Menunggu input scan...</div></div></div>
  <div class="lg:col-span-5"><h4 class="text-sm font-semibold text-gray-500 mb-2 uppercase">Absensi Terakhir</h4><ul id="rc" class="bg-white rounded-xl border divide-y max-h-[60vh] overflow-y-auto"></ul></div></div>`;
  recent();const i=$('si');i.focus();
- i.onkeydown=async e=>{if(e.key!=='Enter')return;const nis=i.value.trim();if(!nis)return;
+ const run=async nis=>{nis=String(nis).trim();if(!nis||i.disabled)return;
   const s=siswa.find(x=>x.nis===nis);
   if(!s){toast('Siswa dengan NIS tersebut tidak ditemukan.','error');i.value='';return}
   i.disabled=true;$('sr').innerHTML=`<div class="text-gray-800 text-left border rounded-xl p-4 bg-slate-50"><div class="text-xl font-bold">${s.nama}</div><div class="text-sm text-gray-500">NIS ${s.nis} • ${kn(s.kelasId)} • WA ${s.noWa}</div><div class="mt-3 text-center p-2 bg-blue-50 text-blue-700 rounded-lg">Memproses Kehadiran & WA...</div></div>`;
@@ -108,20 +127,26 @@ function scan(){
   const ex=riwayat.find(a=>a.nis===nis&&a.tanggal===tanggal);
   if(ex)ex.waktu=waktu;else riwayat.push({nis,nama:s.nama,kelasId:s.kelasId,status:'Hadir',waktu,tanggal,isoDate:new Date().toISOString()});
   S.set('riwayat',riwayat);
-  const msg=cfg.tpl.replace('[Nama Ortu]',s.ortu).replace('[Nama Siswa]',s.nama).replace('[NIS]',s.nis).replace('[Kelas]',kn(s.kelasId)).replace('[Nama Sekolah]',cfg.sekolah).replace('[Tanggal]',tanggal).replace('[Waktu]',waktu);
+  const msg=fillTpl(cfg.tpl,s,tanggal,waktu);
   const r=await kirimWA(s.noWa,msg);
   toast(r.ok?`Hadir: ${s.nama} tersimpan. WA Terkirim.`:`Hadir: ${s.nama} tersimpan. (WA Gagal)`,r.ok?'success':'info');
-  recent();setTimeout(()=>{$('sr').textContent='Menunggu input scan...';i.disabled=false;i.value='';i.focus()},1200)}}
+  recent();setTimeout(()=>{$('sr').textContent='Menunggu input scan...';i.disabled=false;i.value='';i.focus()},1200)};i.onkeydown=e=>{if(e.key==='Enter')run(i.value)};window.runScan=run}
 
+let csp=false;document.addEventListener('securitypolicyviolation',()=>{csp=true});
+function fillTpl(t,s,tgl,wkt){const v={NAMA:s.nama,ORTU:s.ortu,NIS:s.nis,KELAS:kn(s.kelasId),SEKOLAH:cfg.sekolah,TANGGAL:tgl,WAKTU:wkt};return t.replace(/\[(NAMA|ORTU|NIS|KELAS|SEKOLAH|TANGGAL|WAKTU)\]/gi,(m,k)=>v[k.toUpperCase()])}
 function normNo(n){n=String(n||'').replace(/\D/g,'');if(n.startsWith('0'))n='62'+n.slice(1);else if(n.startsWith('8'))n='62'+n;return n}
 async function kirimWA(to,pesan){const waktu=new Date().toLocaleTimeString('id-ID'),no=normNo(to);
  const log=(status,res)=>logs.unshift({waktu,to:no||to,status,pesan,res});
  if(!cfg.apikey||!cfg.sender){log('Gagal','API Key / nomor sender (device) belum diisi.');return{ok:false,msg:'API Key / Sender belum diisi'}}
  if(!no){log('Gagal','Nomor WA tujuan kosong.');return{ok:false,msg:'Nomor tujuan kosong'}}
  try{const f=new FormData();f.append('api_key',cfg.apikey);f.append('sender',normNo(cfg.sender));f.append('number',no);f.append('message',pesan);
-  const r=await fetch(cfg.url.replace(/\/+$/,'')+'/send-message',{method:'POST',body:f}),t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}
-  const ok=j.status===true||j.status==='true'||j.status===1;log(ok?'Terkirim':'Gagal',t.slice(0,300));return{ok,msg:j.msg||j.message||t.slice(0,100)}
- }catch(e){log('Error','Gagal menghubungi server (CORS/jaringan/CSP preview): '+e.message);return{ok:false,msg:e.message}}}
+  csp=false;const r=await fetch(cfg.url.replace(/[/]+$/,'')+'/send-message',{method:'POST',body:f}),t=await r.text();let j=null;try{j=JSON.parse(t)}catch(e){}
+  const st=j?String(j.status).toLowerCase():'';
+  const ok=j?(st==='true'||st==='1'||st==='success'||(st!=='false'&&st!=='0'&&st!=='error'&&st!=='failed'&&st!=='undefined'&&r.ok)):r.ok;
+  log(ok?'Terkirim':'Gagal',t.slice(0,300));return{ok,msg:(j&&(j.msg||j.message))||t.slice(0,100)}
+ }catch(e){
+  if(!csp){log('Terkirim','Permintaan terkirim ke server, tetapi respons tidak terbaca browser (CORS). Cek WA tujuan untuk memastikan. Detail: '+e.message);return{ok:true,msg:'Terkirim (respons tidak terbaca/CORS)'}}
+  log('Error','Diblokir oleh preview (CSP), pesan tidak terkirim: '+e.message);return{ok:false,msg:'Diblokir preview'}}}
 
 const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 function matrix(){const k=$('fk').value,b=$('fb').value||new Date().toISOString().slice(0,7);
@@ -192,7 +217,7 @@ function settings(){
  <label class="block text-sm font-medium">Nomor Sender / Device (terhubung di gateway)<input id="sn" class="inp mt-1" value="${cfg.sender}" placeholder="628123456789"></label>
  <label class="block text-sm font-medium">Nama Sekolah<input id="ss" class="inp mt-1" value="${cfg.sekolah}"></label>
  <label class="block text-sm font-medium">Template Pesan<textarea id="sp" rows="4" class="inp mt-1">${cfg.tpl}</textarea></label>
- <p class="text-xs bg-gray-50 p-2 rounded border">Variabel: [Nama Ortu], [Nama Siswa], [NIS], [Kelas], [Nama Sekolah], [Tanggal], [Waktu]</p>
+ <p class="text-xs bg-gray-50 p-2 rounded border">Variabel: [NAMA] (nama siswa), [ORTU] (nama orang tua), [NIS], [KELAS], [SEKOLAH], [TANGGAL], [WAKTU]</p>
  <div class="flex gap-2 pt-3 border-t flex-wrap"><input id="tn" class="inp flex-1" placeholder="No. WA tes (0812...)"><button class="btn bg-gray-600" style="background:#4b5563" onclick="tes()">Test Kirim</button><button class="btn" onclick="simpan()">Simpan</button></div></div>
  <div class="bg-white rounded-xl border overflow-hidden"><div class="p-3 border-b bg-gray-50 font-medium">Log Notifikasi (Terbaru)</div><ul id="lg" class="divide-y max-h-[30rem] overflow-y-auto"></ul></div></div>`;lg()}
 function lg(){$('lg').innerHTML=logs.map(l=>`<li class="p-3"><div class="flex justify-between text-xs"><span class="text-gray-500">${l.waktu}</span><span class="px-2 rounded ${l.status==='Terkirim'?'bg-green-100 text-green-700':'bg-red-100 text-red-700'}">${l.status}</span></div><p class="text-sm font-medium">Kepada: ${l.to}</p><p class="text-xs italic bg-gray-100 p-2 rounded my-1">${l.pesan}</p><p class="text-[10px] text-gray-400 break-words">${l.res}</p></li>`).join('')||'<li class="p-6 text-center text-sm text-gray-500">Belum ada log pengiriman.</li>'}
