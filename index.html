@@ -266,10 +266,10 @@ function master(){
  const kls=kelas.map(k=>`<tr><td class="td font-mono text-gray-500">${k.id}</td><td class="td font-bold">${k.nama}</td><td class="td">${siswa.filter(s=>s.kelasId===k.id).length} Siswa</td><td class="td text-right"><button onclick="fKelas('${k.id}')" class="px-2 text-blue-600">Edit</button><button onclick="del('kelas','${k.id}')" class="px-2 text-red-600">Hapus</button></td></tr>`).join('');
  $('main').innerHTML=`<div class="flex justify-between items-center mb-4 flex-wrap gap-2"><h2 class="text-2xl font-bold">Data Master</h2><div class="flex gap-2">
  <input type="file" id="xf" accept=".xlsx,.xls,.csv" class="hidden" onchange="impX(event)">
- <button class="btn" style="background:#16a34a" onclick="$('xf').click()">Import Excel</button><button class="btn" onclick="tab==='siswa'?fSiswa():fKelas()">+ Tambah Manual</button></div></div>
- <div class="border-b mb-4 flex gap-6">${tb('siswa','Data Siswa')}${tb('kelas','Data Kelas')}</div>
+ <button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="exportMaster()">📤 Export Excel</button><button class="px-4 py-2 border rounded-xl text-sm font-semibold bg-white text-indigo-600" onclick="dlTemplate()">⬇ Template Excel</button><button class="btn" style="background:#16a34a" onclick="$('xf').click()">Import Excel</button><button class="btn" onclick="tab==='siswa'?fSiswa():fKelas()">+ Tambah Manual</button></div></div>
+ ${tab==='siswa'?'<p class="text-xs text-gray-500 mb-3 -mt-2">Import Excel: kolom <b>NIS, Nama, Kelas</b> wajib; <b>NoWA, Ortu</b> opsional. Unduh <b>Template Excel</b> untuk format &amp; aturan lengkap.</p>':''}<div class="border-b mb-4 flex gap-6">${tb('siswa','Data Siswa')}${tb('kelas','Data Kelas')}</div>
  <div class="bg-white rounded-xl border overflow-x-auto"><table class="min-w-full divide-y"><thead class="bg-gray-50"><tr>${(tab==='siswa'?['NIS','Nama Lengkap','Kelas','No. WA Ortu','Aksi']:['ID','Nama Kelas','Jumlah Siswa','Aksi']).map(h=>`<th class="th">${h}</th>`).join('')}</tr></thead><tbody class="divide-y">${tab==='siswa'?sis:kls}</tbody></table></div>`}
-function openM(t,html,fn){$('mt').textContent=t;$('mb').innerHTML=html;$('ms').onclick=fn;$('modal').classList.remove('hidden')}
+function openM(t,html,fn){$('mt').textContent=t;$('mb').innerHTML=html;$('ms').textContent='Simpan';$('ms').onclick=fn;$('modal').classList.remove('hidden')}
 function closeM(){$('modal').classList.add('hidden')}
 const fld=(id,l,v='')=>`<label class="block text-sm font-medium">${l}<input id="${id}" class="inp mt-1" value="${v}"></label>`;
 function fSiswa(id){const s=siswa.find(x=>x.id===id)||{};
@@ -284,13 +284,63 @@ function fKelas(id){const k=kelas.find(x=>x.id===id)||{};
 function del(t,id){if(t==='siswa'){siswa=siswa.filter(s=>s.id!==id);S.set('siswa',siswa)}
  else{const n=siswa.filter(s=>s.kelasId===id).length;if(n)return toast(`Gagal menghapus. Terdapat ${n} siswa di kelas ini.`,'error');kelas=kelas.filter(k=>k.id!==id);S.set('kelas',kelas)}
  toast('Data berhasil dihapus.','success');master()}
-function impX(e){const f=e.target.files[0];if(!f||!window.XLSX)return;const r=new FileReader();
- r.onload=ev=>{try{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'}),j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);let a=0,u=0;
-  j.forEach(w=>{const nis=String(w.NIS||'');if(!nis)return;const k=kelas.find(k=>k.nama.toLowerCase()===String(w.Kelas||'').toLowerCase())||kelas[0];
-   const i=siswa.findIndex(s=>s.nis===nis),d={id:i>-1?siswa[i].id:'s'+Date.now()+Math.random(),nis,nama:w.Nama||w.Name||'Tanpa Nama',kelasId:k?k.id:'',noWa:String(w.NoWA||w.WA||w['No WA']||''),ortu:w.Ortu||w['Nama Ortu']||'-'};
-   i>-1?(siswa[i]=d,u++):(siswa.push(d),a++)});S.set('siswa',siswa);toast(`${a} siswa baru ditambahkan, ${u} diperbarui.`,'success');master()}
-  catch(x){toast('Gagal membaca file.','error')}e.target.value=''};r.readAsArrayBuffer(f)}
-
+const KEYS={nis:['nis','nisn'],nama:['nama','name','namasiswa','namalengkap'],kelas:['kelas','class'],wa:['nowa','wa','nowaortu','nowhatsapp','hp','nohp','telepon'],ortu:['ortu','namaortu','namawali','wali','orangtua']};
+const nk_=k=>String(k).toLowerCase().replace(/[^a-z0-9]/g,'');
+function pick(r,k){for(const key of Object.keys(r))if(KEYS[k].includes(nk_(key)))return String(r[key]==null?'':r[key]).trim();return ''}
+function evalImp(rows,o){const seen=new Map(),add=[],upd=[],err=[],nk=new Map();
+ rows.forEach((r,idx)=>{const line=idx+2,nis=pick(r,'nis'),nama=pick(r,'nama'),kl=pick(r,'kelas'),wa=pick(r,'wa').replace(/[\s\-+()]/g,''),ortu=pick(r,'ortu');
+  const bad=m=>err.push({line,nis,msg:m});
+  if(!nis&&!nama&&!kl&&!wa)return;
+  if(!nis)return bad('NIS kosong');if(/\s/.test(nis))return bad('NIS tidak boleh mengandung spasi');
+  if(!nama)return bad('Nama kosong');if(!kl)return bad('Kelas kosong');
+  if(wa&&!/^\d{9,15}$/.test(wa))return bad('No WA tidak valid (harus 9-15 digit angka)');
+  if(seen.has(nis))return bad('NIS ganda dalam file (sama dengan baris '+seen.get(nis)+')');
+  const k=kelas.find(x=>x.nama.toLowerCase()===kl.toLowerCase());
+  if(!k&&!o.mk)return bad('Kelas "'+kl+'" belum terdaftar');
+  const ex=siswa.find(x=>x.nis===nis);
+  if(ex&&!o.up)return bad('NIS sudah terdaftar (opsi perbarui nonaktif)');
+  seen.set(nis,line);if(!k)nk.set(kl.toLowerCase(),kl);
+  const d={nis,nama,kl,wa,ortu};if(ex){d.id=ex.id;upd.push(d)}else add.push(d)});
+ return{add,upd,err,nk}}
+let impRows=[];
+function renderImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').checked});
+ $('isum').innerHTML=[['✅','Baru',r.add.length,'#059669'],['🔄','Diperbarui',r.upd.length,'#4f46e5'],['❌','Dilewati',r.err.length,'#dc2626']].map(x=>`<div class="rounded-xl border p-2"><div class="text-xl font-extrabold" style="color:${x[3]}">${x[2]}</div><div class="text-[11px] text-gray-500">${x[0]} ${x[1]}</div></div>`).join('');
+ $('ierr').innerHTML=r.err.length?r.err.map(e=>`<div class="p-1.5 bg-red-50 rounded text-red-700">Baris ${e.line}${e.nis?' (NIS '+e.nis+')':''}: ${e.msg}</div>`).join(''):'<div class="text-emerald-600">Tidak ada baris bermasalah.</div>';
+ $('ms').disabled=!(r.add.length+r.upd.length);$('ms').style.opacity=$('ms').disabled?.5:1}
+function applyImp(){const r=evalImp(impRows,{mk:$('imk').checked,up:$('iup').checked});if(!(r.add.length+r.upd.length))return;
+ const idOf=kl=>{let k=kelas.find(x=>x.nama.toLowerCase()===kl.toLowerCase());if(!k){k={id:'k'+Date.now()+Math.floor(Math.random()*1e4),nama:kl};kelas.push(k)}return k.id};
+ r.add.forEach(d=>siswa.push({id:'s'+Date.now()+Math.random(),nis:d.nis,nama:d.nama,kelasId:idOf(d.kl),noWa:d.wa,ortu:d.ortu||'-'}));
+ r.upd.forEach(d=>{const x=siswa.find(y=>y.id===d.id);x.nama=d.nama;x.kelasId=idOf(d.kl);if(d.wa)x.noWa=d.wa;if(d.ortu)x.ortu=d.ortu});
+ S.set('siswa',siswa);S.set('kelas',kelas);closeM();toast(`Import selesai: ${r.add.length} baru, ${r.upd.length} diperbarui, ${r.err.length} dilewati.`,r.err.length?'info':'success');master()}
+function impX(e){const f=e.target.files[0];if(!f)return;if(!window.XLSX){toast('Library Excel belum termuat.','error');return}
+ const r=new FileReader();r.onload=ev=>{try{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array'}),j=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false});
+  if(!j.length)return toast('File Excel kosong. Gunakan template.','error');
+  const h=Object.keys(j[0]).map(nk_);const miss=['nis','nama','kelas'].filter(k=>!KEYS[k].some(x=>h.includes(x)));
+  if(miss.length)return toast('Kolom wajib tidak ditemukan: '+miss.map(m=>m.toUpperCase()).join(', ')+'. Unduh template untuk format yang benar.','error');
+  impRows=j;
+  openM('Import Data Siswa',`<div class="text-sm text-gray-500">File: <b>${f.name}</b> • ${j.length} baris data</div><div id="isum" class="grid grid-cols-3 gap-2 text-center"></div>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="iup" checked> Perbarui data jika NIS sudah terdaftar</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="imk"> Buat kelas baru otomatis jika belum ada</label>
+  <div class="text-xs font-semibold text-gray-500">Baris yang dilewati:</div><div id="ierr" class="max-h-40 overflow-y-auto text-xs space-y-1"></div>`,applyImp);
+  $('ms').textContent='Import Sekarang';$('iup').onchange=$('imk').onchange=renderImp;renderImp()
+ }catch(x){toast('Gagal membaca file. Pastikan format .xlsx/.xls/.csv benar.','error')}e.target.value=''};r.readAsArrayBuffer(f)}
+function exportMaster(){if(!window.XLSX)return toast('Library Excel belum termuat.','error');
+ const sis=tab==='siswa';
+ const rows=sis?[...siswa].sort((a,b)=>kn(a.kelasId).localeCompare(kn(b.kelasId))||a.nama.localeCompare(b.nama)).map(x=>({NIS:String(x.nis),Nama:x.nama,Kelas:kn(x.kelasId),NoWA:String(x.noWa||''),Ortu:x.ortu||''}))
+  :kelas.map(k=>({'ID Kelas':k.id,'Nama Kelas':k.nama,'Jumlah Siswa':siswa.filter(x=>x.kelasId===k.id).length}));
+ if(!rows.length)return toast('Tidak ada data yang bisa diexport!','error');
+ const ws=XLSX.utils.json_to_sheet(rows);ws['!cols']=sis?[{wch:14},{wch:28},{wch:16},{wch:18},{wch:20}]:[{wch:16},{wch:22},{wch:14}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,sis?'Data_Siswa':'Data_Kelas');
+ const d=new Date().toISOString().slice(0,10);
+ try{XLSX.writeFile(wb,(sis?'Data_Siswa_':'Data_Kelas_')+d+'.xlsx');toast(`${rows.length} data ${sis?'siswa':'kelas'} berhasil diexport.`,'success')}catch(e){toast('Unduhan dibatasi di preview; jalankan di hosting sendiri.','info')}}
+function dlTemplate(){if(!window.XLSX)return toast('Library Excel belum termuat.','error');
+ const k=kelas.map(x=>x.nama),k1=k[0]||'X MIPA 1',k2=k[1]||k1;
+ const t=[['NIS','Nama','Kelas','NoWA','Ortu'],['1001','Contoh Siswa Satu',k1,'081234567890','Bpk. Contoh'],['1002','Contoh Siswa Dua',k2,'6281298765432','Ibu Contoh']];
+ const p=[['PETUNJUK IMPORT DATA SISWA'],[],['1. Isi data pada sheet "Template_Siswa" mulai baris ke-2. HAPUS 2 baris contoh sebelum import.'],['2. Kolom wajib: NIS, Nama, Kelas. NoWA dan Ortu boleh kosong, tetapi tanpa NoWA notifikasi WA tidak terkirim.'],['3. NIS tidak boleh kosong, tidak boleh mengandung spasi, dan tidak boleh ganda dalam satu file.'],['4. Jika NIS sudah terdaftar, data siswa diperbarui (opsi ini bisa dinonaktifkan saat import).'],['5. Kelas harus sama dengan nama kelas di Data Kelas (contoh: '+k1+'). Kelas baru bisa dibuat otomatis lewat opsi saat import.'],['6. NoWA hanya angka 9-15 digit, format 08xxx atau 62xxx.'],['7. Format kolom NIS dan NoWA sebagai Teks agar angka 0 di depan tidak hilang.'],['8. Nama kolom tidak peka huruf besar/kecil. Format file: .xlsx, .xls, atau .csv.'],[],['Kelas terdaftar saat ini: '+(k.join(', ')||'-')]];
+ const ws=XLSX.utils.aoa_to_sheet(t);ws['!cols']=[{wch:14},{wch:28},{wch:16},{wch:18},{wch:20}];
+ const wp=XLSX.utils.aoa_to_sheet(p);wp['!cols']=[{wch:110}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Template_Siswa');XLSX.utils.book_append_sheet(wb,wp,'Petunjuk');
+ try{XLSX.writeFile(wb,'Template_Import_Siswa.xlsx');toast('Template Excel diunduh.','success')}catch(e){toast('Unduhan dibatasi di preview; jalankan di hosting sendiri.','info')}}
 function waPanel(){
  $('sc').innerHTML=`<div class="grid lg:grid-cols-2 gap-6">
  <div class="bg-white rounded-xl border p-5 space-y-3"><h3 class="font-medium">Konfigurasi WA Gateway (MPWA)</h3>
