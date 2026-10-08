@@ -113,7 +113,7 @@ const mem={};
 const S={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):(mem[k]??d)}catch(e){return mem[k]??d}},
  set(k,v){mem[k]=v;try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const $=id=>document.getElementById(id);
-const users=[{email:'admin@sekolah.com',password:'admin',name:'Budi Admin',role:'admin'},{email:'guru@sekolah.com',password:'guru',name:'Siti Guru',role:'guru'}];
+const users=[{email:'admin@tp.com',password:'admin',name:'Yunus Admin',role:'admin'},{email:'guru@tp.com',password:'guru',name:'Siska Guru',role:'guru'}];
 let kelas=S.get('kelas',[{id:'k1',nama:'X MIPA 1'},{id:'k2',nama:'X IPS 1'}]);
 let siswa=S.get('siswa',[
  {id:'s1',nis:'1001',nama:'Ahmad Fauzi',kelasId:'k1',noWa:'081234567890',ortu:'Bpk. Herman'},
